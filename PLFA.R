@@ -2,10 +2,40 @@ PLFA <- read.csv("Oct_Mar_PLFA.csv")
 
 library(ggplot2)
 
+#graph broken up by month
+
+#graph of total bacterial % of total biomass
+p = ggplot(PLFA, aes(x=Field.ID, y=Total.Bacteria....of.Tot..Biomass))  + 
+  geom_boxplot(lwd=.8)  + #change boxplot size
+  theme_bw() + #remove grey background
+  facet_wrap(~Month) + #group by vegetation type
+  xlab("Month") + # change x axis label
+  ylab("% of Bacteria in Total Biomass")+ # change y axis label
+  ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods") #change title
+
+p
+
+mycomparisons_veg <- list(c("Grass", "Mesquite"), c("Mesquite", "Mesquite-Grass"), c("Grass", "Mesquite-Grass")) #groupings for ANOVA
+
+
+d = p + stat_compare_means(comparisons = mycomparisons_veg, size = 5)+
+  stat_compare_means(method = "anova", label.y = 7, size = 6) # add anova values to plot
+
+
+b = d + geom_point(aes(color=Field.ID), size = 3)  + #change color of points
+  scale_color_manual(values=c("Grass" ="#ee9b00", "Mesquite" = "#94d2bd"))  + #add custom colors
+  theme(legend.position = "none", text = element_text(size = 20)) # change sizes
+
+b
+
+ggsave(file="bact_biomass_anova_month.svg", plot=b, width=16, height=9)
+
+# graph broken up by veg
+
 #graph of total bacterial % of total biomass
 p = ggplot(PLFA, aes(x=Month, y=Total.Bacteria....of.Tot..Biomass))  + 
   geom_boxplot(lwd=.8)  + #change boxplot size
-  theme_bw() + #remove grey backgroun
+  theme_bw() + #remove grey background
   facet_wrap(~Field.ID) + #group by vegetation type
   xlab("Month") + # change x axis label
   ylab("% of Bacteria in Total Biomass")+ # change y axis label
@@ -13,6 +43,22 @@ p = ggplot(PLFA, aes(x=Month, y=Total.Bacteria....of.Tot..Biomass))  +
 
 p
 
+
+mycomparisons <- list( c("January", "March"),  c("March", "October"), c("January", "October")) #groupings for ANOVA
+
+d = p + stat_compare_means(comparisons = mycomparisons, size = 5)+
+  stat_compare_means(method = "anova",  # add anova values to plot
+                     label.y = 7, size = 6) # move up and down, change size
+
+
+b = d + geom_point(aes(color=Month), size = 3)  + #change color of points
+  scale_color_manual(values=c("March" ="#ee9b00", "January" = "#94d2bd"))  + #add custom colors
+  theme(legend.position = "none", text = element_text(size = 20)) # change sizes
+
+b
+
+library(svglite)
+ggsave(file="bact_biomass_anova_veg.svg", plot=b, width=16, height=9) # export plot
 
 #graph of total fungi % of total biomass
 q = ggplot(PLFA, aes(x=Month, y=Total.Fungi....of.Tot..Biomass))  + 
