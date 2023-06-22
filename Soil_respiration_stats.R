@@ -2,18 +2,25 @@
 my_data <- read.csv("CO2_measure_for_R.csv")
 
 
+# CO2_measure_for_R is values without adjusting for start CO2
+# CO2_raw.csv is values in jar without adjusting for biomass and not including start C02
+# CO2_adjust_w_start is values adjusted for biomass and start CO2
+# CO2_site is values of empty jar
+
+
 library(ggplot2)
 library(ggpubr)
+
+my_data$Vegetation <- factor(my_data$Vegetation , 
+                             levels=c("Grass", "Mesquite Grass", "Mesquite")) # Change order of vegetation in plot
 
 p = ggplot(my_data, aes(x=Vegetation, y=Respiration))  + #plot CO2 by vegetation type
   geom_boxplot(lwd=.8)  + # add box plot
   theme_bw()+ # remove grey background
-  facet_wrap(~Month) #group by month
+  facet_wrap(~Month)+ #group by month
+  ylab("CO2 (ppm)")+ # change y axis label
+  ggtitle ("CO2 measurments across seasons and vegetation types") #change title
 
-
-
-my_data$Vegetation <- factor(my_data$Vegetation , 
-                             levels=c("Grass", "Mesquite Grass", "Mesquite")) # Change order of vegetation in plot
 
 p 
 
@@ -24,9 +31,10 @@ q = p + stat_compare_means(comparisons = mycomparisons, size = 5)+
   stat_compare_means(method = "anova", label.y = 35, size = 6) # add anova values to plot
 
 
-d = q + geom_point(aes(color=Month), size = 3)  + #change color of points
-scale_color_manual(values=c("March" ="#ee9b00", "January" = "#94d2bd"))  + #add custom colors
-  theme(legend.position = "none", text = element_text(size = 20)) # change sizes
+d = q + geom_point(aes(color=Vegetation), size = 3)  + #change color of points
+scale_color_manual(values=c("Mesquite" ="#f94144", "Grass" = "#90be6d", "Mesquite Grass" = "#277da1"))  + #add custom colors
+  theme(legend.position = "none", text = element_text(size = 20), # change sizes
+        axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) 
 
 
 d
@@ -34,7 +42,7 @@ d
 
 
 library(svglite)
-ggsave(file="CO2_mar_jan.svg", plot=d, width=14, height=8) # export plot
+ggsave(file="CO2_mar_jan_may.svg", plot=d, width=16, height=9) # export plot
 
 library(dplyr)
 stats <- group_by(my_data, Vegetation) %>%
