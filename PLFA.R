@@ -13,6 +13,7 @@ p = ggplot(PLFA, aes(x=Month, y=Total.Bacteria....of.Tot..Biomass))  +
 
 p
 
+
 #graph of total fungi % of total biomass
 q = ggplot(PLFA, aes(x=Month, y=Total.Fungi....of.Tot..Biomass))  + 
   geom_boxplot(lwd=.8)  + #change boxplot size
