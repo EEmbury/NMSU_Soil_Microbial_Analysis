@@ -9,9 +9,10 @@ p = ggplot(PLFA, aes(x=Field.ID, y=Total.Bacteria....of.Tot..Biomass))  +
   geom_boxplot(lwd=.8)  + #change boxplot size
   theme_bw() + #remove grey background
   facet_wrap(~Month) + #group by vegetation type
-  xlab("Month") + # change x axis label
+  xlab("Vegetation") + # change x axis label
   ylab("% of Bacteria in Total Biomass")+ # change y axis label
-  ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods") #change title
+  ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods")+ #change title
+  theme(text = element_text(size = 20))   # change text size
 
 p
 
