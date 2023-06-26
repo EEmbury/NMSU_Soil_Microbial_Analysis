@@ -1,12 +1,14 @@
 PLFA <- read.csv("Oct_Mar_PLFA.csv")
 
 library(ggplot2)
+library(ggpubr)
 
 ################# Bacteria ##########################
 #graph broken up by veg
 
 #graph of total bacterial % of total biomass
-p = ggplot(PLFA, aes(x=Field.ID, y=Total.Bacteria....of.Tot..Biomass))  + 
+p = ggplot(PLFA, aes(y=Total.Bacteria....of.Tot..Biomass, 
+                     (x=factor(Field.ID, level=c('Grass', 'Mesquite-Grass', 'Mesquite'))) ))  + #change order of x-axis
   geom_boxplot(lwd=.8)  + #change boxplot size
   theme_bw() + #remove grey background
   facet_wrap(~Month) + #group by vegetation type
@@ -53,8 +55,8 @@ d = p + stat_compare_means(comparisons = mycomparisons, size = 5)+
                      label.y = 7, size = 6) # move up and down, change size
 
 
-b = d + geom_point(aes(color=Month), size = 3)  + #change color of points
-  scale_color_manual(values=c("March" ="#ee9b00", "January" = "#94d2bd"))  + #add custom colors
+b = d + geom_point(aes(color=Field.ID), size = 3)  + #change color of points
+  scale_color_manual(values=c("Mesquite" ="#ee9b00", "Grass" = "#94d2bd"))  + #add custom colors
   theme(legend.position = "none", text = element_text(size = 20)) # change sizes
 
 b
@@ -87,8 +89,8 @@ d = q + stat_compare_means(comparisons = mycomparisons, size = 5)+
   stat_compare_means(method = "anova", label.y = -1.5, size = 6) # add anova values to plot
 
 
-b = d + geom_point(aes(color=Month), size = 3)  + #change color of points
-  scale_color_manual(values=c("January" ="#ffd166", "March" = "#06d6a0", "October" = "#ef476f"))  + #add custom colors
+b = d + geom_point(aes(color=Field.ID), size = 3)  + #change color of points
+  scale_color_manual(values=c("Mesquite" ="#ffd166", "Grass" = "#06d6a0", "Mesquite-Grass" = "#ef476f"))  + #add custom colors
   theme(legend.position = "none", text = element_text(size = 20)) # change sizes
 
 b
