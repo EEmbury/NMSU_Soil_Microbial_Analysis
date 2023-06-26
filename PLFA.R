@@ -8,7 +8,7 @@ library(ggpubr)
 
 #graph of total bacterial % of total biomass
 p = ggplot(PLFA, aes(y=Total.Bacteria....of.Tot..Biomass, 
-                     (x=factor(Field.ID, level=c('Grass', 'Mesquite-Grass', 'Mesquite'))) ))  + #change order of x-axis
+                    (x=factor(Field.ID, level=c('Grass', 'Mesquite-Grass', 'Mesquite'))) ))  + #change order of x-axis
   geom_boxplot(lwd=.8)  + #change boxplot size
   theme_bw() + #remove grey background
   facet_wrap(~Month) + #group by vegetation type
@@ -19,7 +19,7 @@ p = ggplot(PLFA, aes(y=Total.Bacteria....of.Tot..Biomass,
 
 p
 
-mycomparisons_veg <- list(c("Grass", "Mesquite"), c("Mesquite", "Mesquite-Grass"), c("Grass", "Mesquite-Grass")) #groupings for ANOVA
+mycomparisons_veg <- list(c("Grass", "Mesquite-Grass"), c("Mesquite", "Mesquite-Grass"), c("Grass", "Mesquite")) #groupings for ANOVA
 
 
 d = p + stat_compare_means(comparisons = mycomparisons_veg, size = 5)+
