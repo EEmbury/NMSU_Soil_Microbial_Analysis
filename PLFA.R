@@ -154,13 +154,23 @@ library(Rmisc)
 PLFA_stat <- summarySE(PLFA_fun_bac, measurevar="Total_Percent_Biomass", groupvars=c("Field.ID","Month", "Type"))
 
 #plot data
-ggplot(PLFA_stat,
-  aes(x = Month, y = Total_Percent_Biomass, fill = Type )) + 
-  geom_bar(position="dodge", stat="identity") +
-  facet_wrap(~Field.ID)+
-  scale_y_continuous(labels = scales::percent_format(scale = 1))+
+p <- ggplot(PLFA_stat,
+  aes(x=factor(Month, level=c('October', 'January', 'March')), #change order of x-axis
+      y = Total_Percent_Biomass, fill = Type )) + 
+  geom_bar(position="dodge", stat="identity") + #bar plot
+  facet_grid(~factor(Field.ID, levels=c('Grass', 'Mesquite-Grass', 'Mesquite')))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
   geom_errorbar(aes(ymin=Total_Percent_Biomass-sd, ymax=Total_Percent_Biomass+sd), width=.2,
-                position=position_dodge(.9)) 
+                position=position_dodge(.9)) + #add error bars, must use above summarySE function first
+  xlab("Month") + # change x axis label
+  ylab("% of Total Biomass")+ # change y axis label
+  ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types 
+  and Sampleing Periods") + #change title
+  theme(legend.position = "none", text = element_text(size = 20))+ # change sizes
+  scale_fill_manual(values=c("Fungi" ="#3f88c5", "Bacteria" = "#f49d37"))  #add custom colors
+  
+
+p
 
 
 
