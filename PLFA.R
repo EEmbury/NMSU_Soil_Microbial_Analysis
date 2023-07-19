@@ -167,11 +167,31 @@ p <- ggplot(PLFA_stat,
   ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types 
   and Sampleing Periods") + #change title
   theme(legend.position = "none", text = element_text(size = 20))+ # change sizes
-  scale_fill_manual(values=c("Fungi" ="#3f88c5", "Bacteria" = "#f49d37"))  #add custom colors
+  scale_fill_manual(values=c("Fungi" ="#3f88c5", "Bacteria" = "#f49d37")) #add custom colors
   
 
-p
+p + geom_text(data = df_test, aes(x=Month, y= Total_Percent_Biomass, label = cld))
+  
 
+#ggsave(file="fun_bac_biomass.svg", plot=p, width=16, height=9)
+
+
+### add tukey letters to plot
+library(multcompView)
+anova <- aov(Total_Percent_Biomass ~ Type*Month*Field.ID, data = PLFA_fun_bac)
+summary(anova)
+
+tukey <- TukeyHSD(anova)
+print(tukey)
+
+cld <- multcompLetters4(anova, tukey)
+print(cld)
+
+cld_data <- as.data.frame.list(cld$`Type:Month:Field.ID`)
+
+df_test <- group_by(PLFA_stat, Month)
+
+df_test$cld <- cld_data$Letters
 
 
 ##### results #####
