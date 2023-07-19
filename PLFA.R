@@ -1,4 +1,5 @@
 PLFA <- read.csv("Oct_Mar_PLFA.csv")
+PLFA_fun_bac <- read.csv("PLFA_fun_bac.csv")
 
 library(ggplot2)
 library(ggpubr)
@@ -148,31 +149,20 @@ TukeyHSD(aov.fungi)
 
 ############## bacteria and fungi together ###############
 
-
-PLFA %>% 
-  rename( # here we rename the columns so things look nice in the graph later
-    Fungi = Total.Fungi....of.Tot..Biomass,
-    Bacteria = Total.Bacteria....of.Tot..Biomass
-  ) %>% 
-  pivot_longer( # then we collapse the columns for each side of the brain into a single column,with a second column holding size values
-    cols = c("Fungi", "Bacteria"),
-    names_to = "Type",
-    values_to = "Biomass" )%>% # then we plot and give it a title
-      ggplot(
-        aes(x = Month, y = Biomass, fill = Type )) + 
-      geom_bar(position="dodge", stat="identity") +
-  facet_wrap(~Field.ID)+
-  scale_y_continuous(labels = scales::percent_format(scale = 1))
-)
-    
-
-
 #### claculate stats for error bars
 library(Rmisc)
-PLFA_stat_fungi <- summarySE(PLFA, measurevar="Total.Fungi....of.Tot..Biomass", groupvars=c("Field.ID","Month"))
-PLFA_stat_bacteria <- summarySE(PLFA, measurevar="Total.Bacteria....of.Tot..Biomass", groupvars=c("Field.ID","Month"))
+PLFA_stat <- summarySE(PLFA_fun_bac, measurevar="Total_Percent_Biomass", groupvars=c("Field.ID","Month", "Type"))
 
-PLFA_stat_bac_fun <- merge(PLFA_stat_bacteria, PLFA_stat_fungi, by= c("Field.ID", "Month", "N"))
+#plot data
+ggplot(PLFA_stat,
+  aes(x = Month, y = Total_Percent_Biomass, fill = Type )) + 
+  geom_bar(position="dodge", stat="identity") +
+  facet_wrap(~Field.ID)+
+  scale_y_continuous(labels = scales::percent_format(scale = 1))+
+  geom_errorbar(aes(ymin=Total_Percent_Biomass-sd, ymax=Total_Percent_Biomass+sd), width=.2,
+                position=position_dodge(.9)) 
+
+
 
 ##### results #####
                 #Df Sum Sq Mean Sq F value   Pr(>F)    
