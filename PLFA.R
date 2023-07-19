@@ -2,6 +2,7 @@ PLFA <- read.csv("Oct_Mar_PLFA.csv")
 
 library(ggplot2)
 library(ggpubr)
+library(tidyverse)
 
 ################# Bacteria ##########################
 #graph broken up by veg
@@ -37,7 +38,8 @@ ggsave(file="bact_biomass_anova_month.svg", plot=b, width=16, height=9)
 # graph broken up by month
 
 #graph of total bacterial % of total biomass
-p = ggplot(PLFA, aes(x=Month, y=Total.Bacteria....of.Tot..Biomass))  + 
+p = ggplot(PLFA, aes( y=Total.Bacteria....of.Tot..Biomass,
+                      x=factor(Month, level=c('October', 'January', 'March'))))  + 
   geom_boxplot(lwd=.8)  + #change boxplot size
   theme_bw() + #remove grey background
   facet_wrap(~Field.ID) + #group by vegetation type
@@ -48,7 +50,7 @@ p = ggplot(PLFA, aes(x=Month, y=Total.Bacteria....of.Tot..Biomass))  +
 p
 
 
-mycomparisons <- list( c("January", "March"),  c("March", "October"), c("January", "October")) #groupings for ANOVA
+mycomparisons <- list( c("January", "October"), c("January", "March"), c("March", "October")) #groupings for ANOVA
 
 d = p + stat_compare_means(comparisons = mycomparisons, size = 5)+
   stat_compare_means(method = "anova",  # add anova values to plot
@@ -71,7 +73,8 @@ ggsave(file="bact_biomass_anova_veg.svg", plot=b, width=16, height=9) # export p
 # graph broken up by veg
 
 #graph of total fungi % of total biomass
-q = ggplot(PLFA, aes(x=Month, y=Total.Fungi....of.Tot..Biomass))  + 
+q = ggplot(PLFA, aes(y=Total.Fungi....of.Tot..Biomass,
+                     x=factor(Month, level=c('October', 'January', 'March')))) + 
   geom_boxplot(lwd=.8)  + #change boxplot size
   theme_bw() + #remove grey backgroun
   facet_wrap(~Field.ID) + #group by vegetation type
@@ -83,7 +86,7 @@ q = ggplot(PLFA, aes(x=Month, y=Total.Fungi....of.Tot..Biomass))  +
 q
 
 
-mycomparisons <- list( c("January", "March"),  c("March", "October"), c("January", "October")) #groupings for ANOVA
+mycomparisons <- list( c("January", "October"), c("January", "March"), c("March", "October")) #groupings for ANOVA
 
 d = q + stat_compare_means(comparisons = mycomparisons, size = 5)+
   stat_compare_means(method = "anova", label.y = -1.5, size = 6) # add anova values to plot
@@ -141,6 +144,35 @@ ggsave(file="fun_biomass_anova_month.svg", plot=b, width=16, height=9)
 aov.fungi <- aov(Total.Fungi....of.Tot..Biomass ~ Field.ID * Month, PLFA)  
 summary(aov.fungi)
 TukeyHSD(aov.fungi)
+
+
+############## bacteria and fungi together ###############
+
+
+PLFA %>% 
+  rename( # here we rename the columns so things look nice in the graph later
+    Fungi = Total.Fungi....of.Tot..Biomass,
+    Bacteria = Total.Bacteria....of.Tot..Biomass
+  ) %>% 
+  pivot_longer( # then we collapse the columns for each side of the brain into a single column,with a second column holding size values
+    cols = c("Fungi", "Bacteria"),
+    names_to = "Type",
+    values_to = "Biomass" )%>% # then we plot and give it a title
+      ggplot(
+        aes(x = Month, y = Biomass, fill = Type )) + 
+      geom_bar(position="dodge", stat="identity") +
+  facet_wrap(~Field.ID)+
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+)
+    
+
+
+#### claculate stats for error bars
+library(Rmisc)
+PLFA_stat_fungi <- summarySE(PLFA, measurevar="Total.Fungi....of.Tot..Biomass", groupvars=c("Field.ID","Month"))
+PLFA_stat_bacteria <- summarySE(PLFA, measurevar="Total.Bacteria....of.Tot..Biomass", groupvars=c("Field.ID","Month"))
+
+PLFA_stat_bac_fun <- merge(PLFA_stat_bacteria, PLFA_stat_fungi, by= c("Field.ID", "Month", "N"))
 
 ##### results #####
                 #Df Sum Sq Mean Sq F value   Pr(>F)    
