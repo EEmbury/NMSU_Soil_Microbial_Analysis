@@ -156,9 +156,9 @@ PLFA_stat <- summarySE(PLFA_fun_bac, measurevar="Total_Percent_Biomass", groupva
 #plot data
 p <- ggplot(PLFA_stat,
   aes(x=factor(Month, level=c('October', 'January', 'March')), #change order of x-axis
-      y = Total_Percent_Biomass, fill = Type )) + 
+      y = Total_Percent_Biomass, fill = Type)) + 
   geom_bar(position="dodge", stat="identity") + #bar plot
-  facet_grid(~factor(Field.ID, levels=c('Grass', 'Mesquite-Grass', 'Mesquite')))+
+  facet_grid(~factor(Field.ID, levels=c('Grass', 'Mesquite_Grass', 'Mesquite')))+
   scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
   geom_errorbar(aes(ymin=Total_Percent_Biomass-sd, ymax=Total_Percent_Biomass+sd), width=.2,
                 position=position_dodge(.9)) + #add error bars, must use above summarySE function first
@@ -167,13 +167,13 @@ p <- ggplot(PLFA_stat,
   ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types 
   and Sampleing Periods") + #change title
   theme(legend.position = "none", text = element_text(size = 20))+ # change sizes
-  scale_fill_manual(values=c("Fungi" ="#3f88c5", "Bacteria" = "#f49d37")) #add custom colors
+  scale_fill_manual(values=c("Fungi" ="#3f88c5", "Bacteria" = "#f49d37"))#add custom colors
   
 
-p + geom_text(data = df_test, aes(x=Month, y= Total_Percent_Biomass, label = cld))
+p + geom_text(data = df_test, aes(x=Month, y= Total_Percent_Biomass, label = cld)) #add letters using the below code
   
 
-#ggsave(file="fun_bac_biomass.svg", plot=p, width=16, height=9)
+#ggsave(file="fun_bac_biomass_p.svg", plot=q, width=16, height=9)
 
 
 ### add tukey letters to plot
@@ -193,6 +193,79 @@ df_test <- group_by(PLFA_stat, Month)
 
 df_test$cld <- cld_data$Letters
 
+#create another column in the dataset with the month*species*veg crossover
+PLFA_fun_bac$interaction <- factor(interaction(PLFA_fun_bac$Type, PLFA_fun_bac$Month, PLFA_fun_bac$Field.ID),
+                                   levels = c("Bacteria.October.Grass", "Bacteria.October.Mesquite_Grass", "Bacteria.October.Mesquite",
+                                              "Bacteria.March.Grass", "Bacteria.March.Mesquite_Grass", "Bacteria.March.Mesquite",
+                                              "Bacteria.January.Grass", "Bacteria.January.Mesquite_Grass", "Bacteria.January.Mesquite",
+                                              "Fungi.October.Grass", "Fungi.October.Mesquite_Grass", "Fungi.October.Mesquite",
+                                              "Fungi.March.Grass", "Fungi.March.Mesquite_Grass", "Fungi.March.Mesquite",
+                                              "Fungi.January.Grass", "Fungi.January.Mesquite_Grass", "Fungi.January.Mesquite"))
+
+PLFA_fun_bac$interaction2 <- factor(interaction(PLFA_fun_bac$Type, PLFA_fun_bac$Month),
+                                   levels = c("Bacteria.October","Bacteria.March",
+                                              "Bacteria.January", 
+                                              "Fungi.October","Fungi.March",
+                                              "Fungi.January"))
+
+d = ggplot(PLFA_fun_bac,
+            aes(x=interaction2, y = Total_Percent_Biomass,
+                fill = factor(Month, levels = c("October", "January", "March")))) + #change bar order
+  #geom_bar(position="dodge", stat="identity") + #bar plot
+  geom_boxplot()+
+  facet_wrap(~factor(Field.ID, levels=c('Grass', 'Mesquite_Grass', 'Mesquite')))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+  #geom_errorbar(aes(ymin=Total_Percent_Biomass-sd, ymax=Total_Percent_Biomass+sd), width=.2,
+  #              position=position_dodge(.9)) + #add error bars, must use above summarySE function first
+  theme(axis.title.x = element_blank(), axis.text.x = element_text( vjust = 0.5), axis.ticks.x = element_blank()) + #remove x-axis title
+  ylab("% of Total Biomass")+ # change y axis label
+  ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types 
+  and Sampleing Periods") + #change title
+  theme( text = element_text(size = 20)) +# change sizes
+  scale_fill_manual(values=c("October" ="#c04d27", "January" = "#edba1d", "March" = "#47c0c4"), name = "Month") #add custom colors and change legend name
+
+my_comparisons <- list(c("Bacteria.October","Bacteria.March"),
+                       c("Bacteria.January", "Bacteria.March"),
+                       c("Bacteria.October", "Bacteria.January"),
+                       c("Fungi.October","Fungi.March"),
+                       c("Fungi.January", "Fungi.March"),
+                       c("Fungi.October", "Fungi.January"))
+
+
+#stat_compare_means will not hide ns bars, so had to manually write out signif comparisons
+my_comparisons_manual <- list(c("Bacteria.March.Grass", "Bacteria.January.Grass"),
+                              c("Fungi.March.Grass", "Fungi.January.Grass"),
+                              c("Bacteria.March.Mesquite_Grass", "Bacteria.January.Mesquite_Grass"),
+                              c("Fungi.March.Mesquite_Grass", "Fungi.January.Mesquite_Grass"),
+                              c("Bacteria.March.Mesquite_Grass", "Bacteria.October.Mesquite_Grass"))
+
+d
+
+q <- d +  stat_compare_means(comparisons = my_comparisons, label = "p.signif", hide.ns = T) 
+
+
+q
+                     
+b <- q + scale_x_discrete(labels=c("Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
+                              "Fungi.October" = " ", "Fungi.March" = "Fungi", "Fungi.January" = " ",
+                              "Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
+                              "Fungi.October" = " ", "Fungi.March" = "Fungi", "Fungi.January" = " ",
+                              "Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
+                              "Fungi.October" = "", "Fungi.March" = "Fungi", "Fungi.January" = "")) 
+b
+
+ggsave(file="fun_bac_biomass_p.svg", plot=b, width=16, height=9)
+  
+stat.test <- PLFA_fun_bac %>%
+  group_by(interaction2) %>%
+  wilcox_test(Total_Percent_Biomass ~ Field.ID) %>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()
+stat.test 
+
+stat.test <- stat.test %>% add_xy_position(x = "interaction2")
+
+d + stat_pvalue_manual(stat.test)
 
 ##### results #####
                 #Df Sum Sq Mean Sq F value   Pr(>F)    
