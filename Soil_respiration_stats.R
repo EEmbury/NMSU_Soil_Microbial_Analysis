@@ -1,5 +1,5 @@
 
-my_data <- read.csv("CO2_measure_for_R.csv")
+my_data <- read.csv("CO2_adjusted_w_start.csv")
 
 
 # CO2_measure_for_R is values without adjusting for start CO2
@@ -14,35 +14,32 @@ library(ggpubr)
 my_data$Vegetation <- factor(my_data$Vegetation , 
                              levels=c("Grass", "Mesquite Grass", "Mesquite")) # Change order of vegetation in plot
 
-p = ggplot(my_data, aes(x=Vegetation, y=Respiration))  + #plot CO2 by vegetation type
+p = ggplot(my_data, aes(x=Vegetation, y=Respiration, fill = Vegetation))  + #plot CO2 by vegetation type
   geom_boxplot(lwd=.8)  + # add box plot
   theme_bw()+ # remove grey background
   facet_wrap(~Month)+ #group by month
-  ylab("CO2 (ppm)")+ # change y axis label
-  ggtitle ("CO2 measurments across seasons and vegetation types") #change title
+  ylab("CO2 g-1 of biomass h-1")+ # change y axis label
+  ggtitle ("CO2 Measurements Across Seasons and Vegetation")+
+  scale_fill_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite Grass" = "#47c0c4"))+ #add custom colors#change title
+  theme( text = element_text(size = 20), legend.position = "none", axis.title.x=element_blank(), axis.text.x = element_text(angle=35, vjust = 0.95, hjust =0.95))
 
+  
 
 p 
 
 
 mycomparisons <- list( c("Grass", "Mesquite Grass"),  c("Mesquite", "Mesquite Grass"), c("Grass", "Mesquite")) #groupings for ANOVA
 
-q = p + stat_compare_means(comparisons = mycomparisons, size = 5)+
-  stat_compare_means(method = "anova", label.y = 35, size = 6) # add anova values to plot
+q <- p + stat_compare_means(comparisons = mycomparisons, hide.ns = T, label = "p.signif")
 
 
-d = q + geom_point(aes(color=Vegetation), size = 3)  + #change color of points
-scale_color_manual(values=c("Mesquite" ="#f94144", "Grass" = "#90be6d", "Mesquite Grass" = "#277da1"))  + #add custom colors
-  theme(legend.position = "none", text = element_text(size = 20), # change sizes
-        axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) 
+q
 
-
-d
 
 
 
 library(svglite)
-ggsave(file="CO2_mar_jan_may.svg", plot=d, width=16, height=9) # export plot
+ggsave(file="CO2_mar_may.svg", plot=q, width=9, height=12) # export plot
 
 library(dplyr)
 stats <- group_by(my_data, Vegetation) %>%
