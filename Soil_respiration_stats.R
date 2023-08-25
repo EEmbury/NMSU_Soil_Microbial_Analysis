@@ -2,6 +2,8 @@
 my_data <- read.csv("CO2_adjusted_w_start.csv")
 
 
+
+
 # CO2_measure_for_R is values without adjusting for start CO2
 # CO2_raw.csv is values in jar without adjusting for biomass and not including start C02
 # CO2_adjust_w_start is values adjusted for biomass and start CO2
@@ -21,11 +23,12 @@ p = ggplot(my_data, aes(x=Vegetation, y=Respiration, fill = Vegetation))  + #plo
   ylab("CO2 g-1 of biomass h-1")+ # change y axis label
   ggtitle ("CO2 Measurements Across Seasons and Vegetation")+
   scale_fill_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite Grass" = "#47c0c4"))+ #add custom colors#change title
-  theme( text = element_text(size = 20), legend.position = "none", axis.title.x=element_blank(), axis.text.x = element_text(angle=35, vjust = 0.95, hjust =0.95))
+  theme( text = element_text(size = 40), legend.position = "none", axis.title.x=element_blank(), axis.text.x = element_text(angle=35, vjust = 0.95, hjust =0.95))
 
   
 
 p 
+
 
 
 mycomparisons <- list( c("Grass", "Mesquite Grass"),  c("Mesquite", "Mesquite Grass"), c("Grass", "Mesquite")) #groupings for ANOVA
@@ -39,7 +42,7 @@ q
 
 
 library(svglite)
-ggsave(file="CO2_mar_may.svg", plot=q, width=9, height=12) # export plot
+ggsave(file="CO2_mar_may3.svg", plot=p, width=13.5, height=14) # export plot
 
 library(dplyr)
 stats <- group_by(my_data, Vegetation) %>%
