@@ -1,0 +1,81 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''>Exploratory Data Analyses
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+<style type="text/css">
+/* Whole document: */
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 5,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Soil Temperature**
+
+Soil temperature measurements
+
+Soil temperature was measured using a temperature probe at a depth of 3.75in.
+
+A, B, C correspond with replicates within plots
+
+
+```{r}
+soil_temp <- read.csv("Raw_data/soil_temp/Soil_temperature.csv")
+
+#add column to average temp in each plot
+library(dplyr)
+soil_temp_avg <- mutate(soil_temp, mean_col = rowMeans(select(soil_temp,
+                                              c(Celsius_A,Celsius_B,Celsius_C)),
+                                              na.rm = TRUE))
+
+#plot monthly averages
+library(ggplot2)
+
+ggplot(soil_temp_avg, aes(x=factor(Vegetation, 
+                                   level=c('Grass', 
+                                           'Mesquite_Grass', 
+                                           'Mesquite')), #change order of x-axis
+                          y=mean_col))+
+  geom_bar(position="dodge", stat="identity")+
+  facet_wrap(~factor(Month, levels = c("October", "January", "March", 
+                                       "May", "July")))+
+  xlab("Vegetation") + # change x axis label
+  ylab("Temperature (C)") # change y axis label
+
+```
+
+
+# **SECTION TITLE HERE**
+
+ENTER TEXT HERE
+
+
+```{r}
+#ENTER CODE HERE
+```
+
