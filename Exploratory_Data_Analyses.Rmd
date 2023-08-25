@@ -8,7 +8,7 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 <style type="text/css">
-/* Whole document: */
+/* Whole document: */ 
 body{
   font-size: 12pt;
 }
