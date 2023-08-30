@@ -45,27 +45,29 @@ knitr::opts_chunk$set(
 
 
 ```{r}
-soil_temp <- read.csv("Raw_data/soil_temp/Soil_temperature.csv")
+soil_temp <- read.csv("Raw_data/soil_temp/Soil_temperature_2.csv")
 
-#add column to average temp in each plot
-library(dplyr)
-soil_temp_avg <- mutate(soil_temp, mean_col = rowMeans(select(soil_temp,
-                                              c(Celsius_A,Celsius_B,Celsius_C)),
-                                              na.rm = TRUE))
+#get standard deviation for error bars
+library(Rmisc)
+soil_temp_sum <- summarySE(soil_temp, measurevar = "Celsius", groupvars=c("Month","Vegetation"))
 
 #plot monthly averages
 library(ggplot2)
 
-ggplot(soil_temp_avg, aes(x=factor(Vegetation, 
+ggplot(soil_temp_sum, aes(x=factor(Vegetation, 
                                    level=c('Grass', 
                                            'Mesquite_Grass', 
                                            'Mesquite')), #change order of x-axis
-                          y=mean_col))+
+                          y=Celsius))+
   geom_bar(position="dodge", stat="identity")+
   facet_wrap(~factor(Month, levels = c("October", "January", "March", 
                                        "May", "July")))+
   xlab("Vegetation") + # change x axis label
-  ylab("Temperature (C)") # change y axis label
+  ylab("Temperature (C)") +# change y axis label
+  geom_errorbar(aes(ymin=Celsius-se, ymax=Celsius+se), width=.1) 
+
+#add error bars
+
 
 ```
 
@@ -83,7 +85,7 @@ soil_ph <- read.csv("Raw_data/soil_chem/ph_for_r.csv", header = TRUE)
 #plot data
 library(ggplot2)
 
-ggplot(soil_ph, aes(x=factor(Vegetation, 
+pH_plot <- ggplot(soil_ph, aes(x=factor(Vegetation, 
                                    level=c('Grass', 
                                            'Mesquite-Grass', 
                                            'Mesquite')), #change order of x-axis
@@ -95,6 +97,16 @@ ggplot(soil_ph, aes(x=factor(Vegetation,
   xlab("Vegetation") + # change x axis label
   ylab("pH") # change y axis label
 
+#add P values
+library(ggpubr)
+library(tidyverse)
+
+mycomparisons_veg <- list(c("Grass", "Mesquite-Grass"),
+                          c("Mesquite",  "Mesquite-Grass"), 
+                          c("Grass", "Mesquite")) #groupings for ANOVA
+
+pH_plot + stat_compare_means(comparisons = mycomparisons_veg, size = 3, label.y = 5, step.increase = .3)+
+  stat_compare_means(method = "anova", label.y = 1, size = 3) # add anova values to plot
 ```
 
 
@@ -113,7 +125,7 @@ soil_CN <- transform(soil_CN, C_N = soil_CN$C / soil_CN$N)
 #plot C:N ratio
 library(ggplot2)
 
-ggplot(soil_CN, aes(x=factor(Vegetation, 
+CN_plot <- ggplot(soil_CN, aes(x=factor(Vegetation, 
                                    level=c('Grass', 
                                            'Mesquite-Grass', 
                                            'Mesquite')), #change order of x-axis
@@ -123,8 +135,69 @@ ggplot(soil_CN, aes(x=factor(Vegetation,
                                        "May", "July")))+
   stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
   xlab("Vegetation") + # change x axis label
-  ylab("C:N") # change y axis label
+  ylab("C:N")+ # change y axis label
+  ylim(0, 17) #change y-axis scale so p values can fit in plot
+
+
+#add P values
+library(ggpubr)
+library(tidyverse)
+
+mycomparisons_veg <- list(c("Grass", "Mesquite-Grass"),
+                          c("Mesquite",  "Mesquite-Grass"), 
+                          c("Grass", "Mesquite")) #groupings for ANOVA
+
+CN_plot + stat_compare_means(comparisons = mycomparisons_veg, size = 3, step.increase = .19)+
+  stat_compare_means(method = "anova", label.y = 1, size = 3) # add anova values to plot
 ```
+
+# **PLFA**
+
+- Phospholipid Fatty Acid Analysis
+
+
+```{r}
+PLFA_fun_bac <- read.csv("PLFA_fun_bac.csv")
+
+#add a column that connects microbe to month
+PLFA_fun_bac$interaction2 <- factor(interaction(PLFA_fun_bac$Type, PLFA_fun_bac$Month),
+                                   levels = c("Bacteria.October","Bacteria.March",
+                                              "Bacteria.January", 
+                                              "Fungi.October","Fungi.March",
+                                              "Fungi.January"))
+
+PLFA_plot <- ggplot(PLFA_fun_bac,
+            aes(x=interaction2, y = Total_Percent_Biomass,
+                fill = factor(Month, levels = c("October", "January", "March")))) + #change bar order
+  geom_boxplot()+
+  facet_wrap(~factor(Field.ID, levels=c('Grass', 'Mesquite_Grass', 'Mesquite')))+
+  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+  theme(axis.title.x = element_blank(), axis.text.x = element_text( vjust = 0.5), axis.ticks.x = element_blank()) + #remove x-axis title
+  ylab("% of Total Biomass")+ # change y axis label
+  ggtitle ("% of Fungi and Bacteria in Total Biomass Across 
+  Vegetation Types and Sampleing Periods") + #change title
+  #theme( text = element_text(size = 20)) + # change sizes for poster presentation
+  scale_fill_manual(values=c("October" ="#c04d27", "January" = "#edba1d", "March" = "#47c0c4"), name = "Month") #add custom colors and change legend name
+
+#comparisons for p values
+my_comparisons <- list(c("Bacteria.October","Bacteria.March"),
+                       c("Bacteria.January", "Bacteria.March"),
+                       c("Bacteria.October", "Bacteria.January"),
+                       c("Fungi.October","Fungi.March"),
+                       c("Fungi.January", "Fungi.March"),
+                       c("Fungi.October", "Fungi.January"))
+
+
+PLFA_plot +  stat_compare_means(comparisons = my_comparisons, size =3) +
+  scale_x_discrete(labels=c("Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
+                              "Fungi.October" = " ", "Fungi.March" = "Fungi", "Fungi.January" = " ",
+                              "Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
+                              "Fungi.October" = " ", "Fungi.March" = "Fungi", "Fungi.January" = " ",
+                              "Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
+                              "Fungi.October" = "", "Fungi.March" = "Fungi", "Fungi.January" = "")) 
+
+```
+
 
 # **SECTION TITLE HERE**
 
