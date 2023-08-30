@@ -37,11 +37,11 @@ knitr::opts_chunk$set(
 
 # **Soil Temperature**
 
-Soil temperature measurements
+- Soil temperature measurements
 
-Soil temperature was measured using a temperature probe at a depth of 3.75in.
+- Soil temperature was measured using a temperature probe at a depth of 3.75in.
 
-A, B, C correspond with replicates within plots
+- A, B, C correspond with replicates within plots
 
 
 ```{r}
@@ -70,6 +70,62 @@ ggplot(soil_temp_avg, aes(x=factor(Vegetation,
 ```
 
 
+# **Soil pH**
+
+- There were issues with the pH soil probe so all data using that probe will not be included in any analyses
+
+- All pH measurements are from soil samples sent to RegenAg
+
+
+```{r}
+soil_ph <- read.csv("Raw_data/soil_chem/ph_for_r.csv", header = TRUE)
+
+#plot data
+library(ggplot2)
+
+ggplot(soil_ph, aes(x=factor(Vegetation, 
+                                   level=c('Grass', 
+                                           'Mesquite-Grass', 
+                                           'Mesquite')), #change order of x-axis
+                          y=pH))+
+  geom_boxplot()+
+  facet_wrap(~factor(Month, levels = c("October", "January", "March", 
+                                       "May", "July")))+
+  stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
+  xlab("Vegetation") + # change x axis label
+  ylab("pH") # change y axis label
+
+```
+
+
+
+# **C:N Levels**
+
+- All C:N measurements are from soil samples sent to RegenAg
+
+
+```{r}
+soil_CN <- read.csv("Raw_data/soil_chem/C_N_for_r.csv", header = TRUE)
+
+#add column of C:N ratio
+soil_CN <- transform(soil_CN, C_N = soil_CN$C / soil_CN$N)
+
+#plot C:N ratio
+library(ggplot2)
+
+ggplot(soil_CN, aes(x=factor(Vegetation, 
+                                   level=c('Grass', 
+                                           'Mesquite-Grass', 
+                                           'Mesquite')), #change order of x-axis
+                          y=C_N))+
+  geom_boxplot()+
+  facet_wrap(~factor(Month, levels = c("October", "January", "March", 
+                                       "May", "July")))+
+  stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
+  xlab("Vegetation") + # change x axis label
+  ylab("C:N") # change y axis label
+```
+
 # **SECTION TITLE HERE**
 
 ENTER TEXT HERE
@@ -78,4 +134,3 @@ ENTER TEXT HERE
 ```{r}
 #ENTER CODE HERE
 ```
-
