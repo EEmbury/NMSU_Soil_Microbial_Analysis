@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
   cache = FALSE,        
   fig.align = "center", 
   fig.height = 4,
-  fig.width = 5,
+  fig.width = 6,
   class.source="bg-warning",
   class.output="bg-success"
 )
@@ -250,7 +250,34 @@ respiration_plot + stat_compare_means(comparisons = mycomparisons, size =3)
 
 Mass loss from litter bags
 
+
+Collection Periods:
+
+  - a = 87 days of decomposition
+  - b = 145 days of decomposition
+  - c = 207 days of decomposition
+  - d = 269 days of decomposition
+
 ```{r}
+litter <- read.csv("Raw_data/litter/Litter_bags_rm_open.csv")
+
+library(ggplot2)
+
+#get standard deviation for error bars
+library(Rmisc)
+litter_sum <- summarySE(litter, measurevar = "Biomass_change", groupvars=c("Collection_period","Vegetation"))
+
+
+litter_plot <- ggplot(litter_sum, aes(x= Collection_period, y = Biomass_change, group = Vegetation))+
+  geom_line(aes(color=Vegetation))+
+  geom_point()+
+  xlab("Collection Period") + # change x axis label
+  ylab("Average Change in Biomass (g)")+ # change y axis label
+  scale_color_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite-Grass" = "#47c0c4"))+ #add custom colors
+  geom_errorbar(aes(ymin=Biomass_change-se, ymax=Biomass_change+se, color = Vegetation), width=.1) 
+  
+litter_plot
+
 
 ```
 
