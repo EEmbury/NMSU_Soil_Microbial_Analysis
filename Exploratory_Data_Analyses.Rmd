@@ -109,7 +109,37 @@ pH_plot + stat_compare_means(comparisons = mycomparisons_veg, size = 3, label.y 
   stat_compare_means(method = "anova", label.y = 1, size = 3) # add anova values to plot
 ```
 
+# **Electrical conductivity**
 
+```{r}
+e_conduct <- read.csv("Raw_data/soil_chem/Electrical_conductivity_for_r.csv", header = TRUE)
+
+#plot data
+library(ggplot2)
+
+e_conduct_plot <- ggplot(e_conduct, aes(x=factor(Vegetation, 
+                                   level=c('Grass', 
+                                           'Mesquite-Grass', 
+                                           'Mesquite')), #change order of x-axis
+                          y=Electrical.Conductivity))+
+  geom_boxplot()+
+  facet_wrap(~factor(Month, levels = c("October", "January", "March", 
+                                       "May", "July")))+
+  stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
+  xlab("Vegetation") + # change x axis label
+  ylab("Electrical Conductivity mmho/cm") # change y axis label
+
+#add P values
+library(ggpubr)
+library(tidyverse)
+
+mycomparisons_veg <- list(c("Grass", "Mesquite-Grass"),
+                          c("Mesquite",  "Mesquite-Grass"), 
+                          c("Grass", "Mesquite")) #groupings for ANOVA
+
+e_conduct_plot + stat_compare_means(comparisons = mycomparisons_veg, label.y = 0.21, step.increase = .1, size = 3)+
+  stat_compare_means(method = "anova", label.y = .05) # add anova values to plot
+```
 
 # **C:N Levels**
 
@@ -259,12 +289,27 @@ Collection Periods:
   - d = 269 days of decomposition
 
 ```{r}
+litter_seived <- read.csv("Raw_data/litter/Litter_bags_seived_rm_open.csv")
 litter <- read.csv("Raw_data/litter/Litter_bags_rm_open.csv")
+litter_rm_mesh1 <- read.csv("Raw_data/litter/Litter_bags_seived_rm_open_rm_mesh1.csv")
 
 library(ggplot2)
 
 #get standard deviation for error bars
 library(Rmisc)
+litter_sum_seived <- summarySE(litter_seived, measurevar = "Biomass_change", groupvars=c("Collection_period","Vegetation"))
+
+
+litter_plot_seived <- ggplot(litter_sum_seived, aes(x= Collection_period, y = Biomass_change, group = Vegetation))+
+  geom_line(aes(color=Vegetation))+
+  geom_point()+
+  xlab("Collection Period") + # change x axis label
+  ylab("Average Change in Biomass (g)")+ # change y axis label
+  ggtitle("litter mass seived")+
+  scale_color_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite-Grass" = "#47c0c4"))+ #add custom colors
+  geom_errorbar(aes(ymin=Biomass_change-se, ymax=Biomass_change+se, color = Vegetation), width=.1) 
+  
+##############
 litter_sum <- summarySE(litter, measurevar = "Biomass_change", groupvars=c("Collection_period","Vegetation"))
 
 
@@ -273,11 +318,67 @@ litter_plot <- ggplot(litter_sum, aes(x= Collection_period, y = Biomass_change, 
   geom_point()+
   xlab("Collection Period") + # change x axis label
   ylab("Average Change in Biomass (g)")+ # change y axis label
+  ggtitle("litter mass not seived")+
+  scale_color_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite-Grass" = "#47c0c4"))+ #add custom colors
+  geom_errorbar(aes(ymin=Biomass_change-se, ymax=Biomass_change+se, color = Vegetation), width=.1) 
+
+##############
+litter_sum_rm_mesh1 <- summarySE(litter_rm_mesh1, measurevar = "Biomass_change", groupvars=c("Collection_period","Vegetation"))
+
+
+litter_plot_rm_mesh1 <- ggplot(litter_sum_rm_mesh1, aes(x= Collection_period, y = Biomass_change, group = Vegetation))+
+  geom_line(aes(color=Vegetation))+
+  geom_point()+
+  xlab("Collection Period") + # change x axis label
+  ylab("Average Change in Biomass (g)")+ # change y axis label
+  ggtitle("litter mass seived + mesh 1 removed")+
   scale_color_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite-Grass" = "#47c0c4"))+ #add custom colors
   geom_errorbar(aes(ymin=Biomass_change-se, ymax=Biomass_change+se, color = Vegetation), width=.1) 
   
+  
 litter_plot
+litter_plot_seived
+litter_plot_rm_mesh1 
+```
 
+# **Temperature, humidity, and precipitation data** 
+
+From John Anderson:
+
+- Study 611 Plot G3 -> Study 548 CSIS Block-8 
+  - Distance from plot to met station:  ~92m NNW
+- Study 611 Plot MG3 -> Study 548 CSIS Block-7   
+  - Distance from plot to met station:  ~192m SW
+- Study 611 Plot M1 -> Study 548 CSIS Block-11    
+  - Distance from plot to met station:  ~135m NNW
+
+**Block 8** Grass site
+
+Anderson, J. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 8 meteorological station: Daily summary data: 2013 - ongoing ver 33. Environmental Data Initiative. https://doi.org/10.6073/pasta/bf8b5899b2e6bace4ceefa48fd3c970b (Accessed 2023-09-10).
+
+**Block 7** Mesquite-Grass
+
+Anderson, J. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 7 meteorological station: Daily summary data: 2013 - ongoing ver 35. Environmental Data Initiative. https://doi.org/10.6073/pasta/c6d90223879a86a0825e3aeddb4b1619 (Accessed 2023-09-11).
+
+**Block 11** Mesquite
+
+Anderson, J. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 11 meteorological station: Daily summary data: 2013 - ongoing ver 32. Environmental Data Initiative. https://doi.org/10.6073/pasta/c11ab044ada8ea13b5e6d1d2e20e7494 (Accessed 2023-09-11).
+
+```{r}
 
 ```
 
+# **Soil Water Content**
+
+**Block 8** Grass site
+Duniway, M. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 8 meteorological station: Daily average soil volumetric water content data: 2013 - ongoing ver 33. Environmental Data Initiative. https://doi.org/10.6073/pasta/e6c6ad8289d5da3019c6a8b5d3a9a42d (Accessed 2023-09-11).
+
+
+**Block 7** Grass-mesquite site
+
+Duniway, M. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 7 meteorological station: Daily average soil volumetric water content data: 2013 - ongoing ver 34. Environmental Data Initiative. https://doi.org/10.6073/pasta/8ef8d92977a00665af194d09eaedc789 (Accessed 2023-09-11).
+
+
+**Block 11** Mesquite site
+
+Duniway, M. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 11 meteorological station: Daily average soil volumetric water content data: 2013 - ongoing ver 35. Environmental Data Initiative. https://doi.org/10.6073/pasta/501c5045cfb19930f9812b941cc98478 (Accessed 2023-09-11).
