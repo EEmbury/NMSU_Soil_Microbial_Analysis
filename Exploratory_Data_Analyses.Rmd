@@ -27,8 +27,8 @@ knitr::opts_chunk$set(
   message = FALSE,  
   cache = FALSE,        
   fig.align = "center", 
-  fig.height = 4,
-  fig.width = 6,
+  fig.height = 5,
+  fig.width = 8,
   class.source="bg-warning",
   class.output="bg-success"
 )
@@ -182,54 +182,97 @@ CN_plot + stat_compare_means(comparisons = mycomparisons_veg, size = 3, step.inc
 ```
 
 # **PLFA**
+    - Phospholipid Fatty Acid Analysis
 
-- Phospholipid Fatty Acid Analysis
+    - Thoughts so far (as of 10/5/2023): Vegetation does not seem to be a significant driver of biomass variation. Instead, seasonality appears to be a stronger driver of biomass variation.
 
-
+- Fungal and Bacterial Biomass Percentage
 ```{r}
-PLFA_fun_bac <- read.csv("PLFA_fun_bac.csv")
+PLFA_fun_bac <- read.csv("Raw_data/All_PLFA_fun_back.csv")
 
 #add a column that connects microbe to month
 PLFA_fun_bac$interaction2 <- factor(interaction(PLFA_fun_bac$Type, PLFA_fun_bac$Month),
                                    levels = c("Bacteria.October","Bacteria.March",
-                                              "Bacteria.January", 
+                                              "Bacteria.January", "Bacteria.May", "Bacteria.July",
                                               "Fungi.October","Fungi.March",
-                                              "Fungi.January"))
+                                              "Fungi.January", "Fungi.May", "Fungi.July"))
 
 PLFA_plot <- ggplot(PLFA_fun_bac,
             aes(x=interaction2, y = Total_Percent_Biomass,
-                fill = factor(Month, levels = c("October", "January", "March")))) + #change bar order
+                fill = factor(Month, levels = c("October", "January", "March", "May", "July")))) + #change bar order
   geom_boxplot()+
-  facet_wrap(~factor(Field.ID, levels=c('Grass', 'Mesquite_Grass', 'Mesquite')))+
+  facet_wrap(~factor(Vegetation, levels=c('Grass', 'Mesquite-Grass', 'Mesquite')))+
   scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
   theme(axis.title.x = element_blank(), axis.text.x = element_text( vjust = 0.5), axis.ticks.x = element_blank()) + #remove x-axis title
   ylab("% of Total Biomass")+ # change y axis label
   ggtitle ("% of Fungi and Bacteria in Total Biomass Across 
   Vegetation Types and Sampleing Periods") + #change title
   #theme( text = element_text(size = 20)) + # change sizes for poster presentation
-  scale_fill_manual(values=c("October" ="#c04d27", "January" = "#edba1d", "March" = "#47c0c4"), name = "Month") #add custom colors and change legend name
-
-#comparisons for p values
-PLFA_comparisons <- list(c("Bacteria.October","Bacteria.March"),
-                       c("Bacteria.January", "Bacteria.March"),
-                       c("Bacteria.October", "Bacteria.January"),
-                       c("Fungi.October","Fungi.March"),
-                       c("Fungi.January", "Fungi.March"),
-                       c("Fungi.October", "Fungi.January"))
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
 
-PLFA_plot +  stat_compare_means(comparisons = PLFA_comparisons, size =3) +
-  scale_x_discrete(labels=c("Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
-                              "Fungi.October" = " ", "Fungi.March" = "Fungi", "Fungi.January" = " ",
-                              "Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
-                              "Fungi.October" = " ", "Fungi.March" = "Fungi", "Fungi.January" = " ",
-                              "Bacteria.October" = " ", "Bacteria.March" = "Bacteria", "Bacteria.January" = " ",
-                              "Fungi.October" = "", "Fungi.March" = "Fungi", "Fungi.January" = "")) 
+PLFA_plot + scale_x_discrete(labels=c( "Bacteria.October" = " ", "Bacteria.March" = "", "Bacteria.January" = "Bacteria",
+                            "Bacteria.May" = "", "Bacteria.July" = "",
+                              "Fungi.October" = "", "Fungi.March" = "", "Fungi.January" = "Fungi",
+                            "Fungi.May" = "", "Fungi.July" = "")) 
+
+mod.plfa <- aov(PLFA_fun_bac$Total_Percent_Biomass ~ PLFA_fun_bac$Type*PLFA_fun_bac$Month)
+summary(mod.plfa)
+
+tuk.plfa <- TukeyHSD(mod.plfa)
+
+### filter TukeyHSD results to only show significant values
+as.data.frame(tuk.plfa$`PLFA_fun_bac$Type:PLFA_fun_bac$Month`) %>%
+  filter(`p adj` < .05)
 
 ```
 
+- Total Biomass in ng
+
+  - remove outlier:
+  Mesquite	January	M2_a_Jan	28018.25
+```{r}
+
+PLFA_total <- read.csv("Raw_data/Total_biomass.csv")
+
+
+PLFA_plot_total <- ggplot(PLFA_total,aes(x=Month, y = Total_Biomass,
+  fill = factor(Month, levels = c("October", "January", "March", "May", "July")))) + 
+  geom_boxplot()+
+  facet_wrap(~factor(Vegetation, levels=c('Grass', 'Mesquite-Grass', 'Mesquite')))+
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())+
+  ylab("Total Biomass (ng/g)")+ # change y axis label
+  ggtitle ("Total Microbial Biomass Across Vegetation Types and Sampleing Periods") + #change title
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
+
+
+PLFA_plot_total
+
+mod.plfa.tot <- aov(PLFA_total$Total_Biomass ~ PLFA_total$Vegetation*PLFA_total$Month)
+summary(mod.plfa.tot)
+
+tot.tuk <- TukeyHSD(mod.plfa.tot)
+
+library(dplyr)
+library(tidyverse)
+
+
+### filter TukeyHSD results to only show significant values
+as.data.frame(tot.tuk$`PLFA_total$Vegetation:PLFA_total$Month`) %>%
+  filter(`p adj` < .05)
+
+as.data.frame(tot.tuk$`PLFA_total$Vegetation`) %>%
+  filter(`p adj` < .05)
+
+as.data.frame(tot.tuk$`PLFA_total$Month`) %>%
+  filter(`p adj` < .05)
+
+```
 
 # **Respiration**
+
+" Also not super important for this report. But for your thesis, write microbial respiration in the y axis and then add in parenthesis (CO2 g-1 h-1)" -- from Adriana
+
 
 - Respiration measured from litter bags
 - Litter bags placed into Mason jar respiration chambers and incubated for 45 minutes
@@ -278,6 +321,8 @@ respiration_plot + stat_compare_means(comparisons = mycomparisons, size =3)
 
 # **Litter Decomposition**
 
+"Not too important for this report, but for your thesis, write days instead of collection period in the x axis." -- from Adriana
+
 Mass loss from litter bags
 
 
@@ -305,8 +350,10 @@ litter_plot_seived <- ggplot(litter_sum_seived, aes(x= Collection_period, y = Bi
   geom_point()+
   xlab("Collection Period") + # change x axis label
   ylab("Average Change in Biomass (g)")+ # change y axis label
-  ggtitle("litter mass seived")+
-  scale_color_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite-Grass" = "#47c0c4"))+ #add custom colors
+  ggtitle("Leaf Litter Mass Lost Following Microbial Decomposition in
+          Different Vegetation Types")+
+  scale_color_manual(values=c("Mesquite" ="#c04d27", "Grass" = "#edba1d", "Mesquite-Grass" = "#47c0c4"))+
+    theme( text = element_text(size = 20)) +
   geom_errorbar(aes(ymin=Biomass_change-se, ymax=Biomass_change+se, color = Vegetation), width=.1) 
   
 ##############
