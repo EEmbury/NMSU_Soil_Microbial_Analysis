@@ -27,7 +27,7 @@ knitr::opts_chunk$set(
   message = FALSE,  
   cache = FALSE,        
   fig.align = "center", 
-  fig.height = 5,
+  fig.height = 8,
   fig.width = 8,
   class.source="bg-warning",
   class.output="bg-success"
@@ -190,51 +190,43 @@ CN_plot + stat_compare_means(comparisons = mycomparisons_veg, size = 3, step.inc
 ```{r}
 PLFA_fun_bac <- read.csv("Raw_data/All_PLFA_fun_back.csv")
 
-#add a column that connects microbe to month
-PLFA_fun_bac$interaction2 <- factor(interaction(PLFA_fun_bac$Type, PLFA_fun_bac$Month),
-                                   levels = c("Bacteria.October","Bacteria.March",
-                                              "Bacteria.January", "Bacteria.May", "Bacteria.July",
-                                              "Fungi.October","Fungi.March",
-                                              "Fungi.January", "Fungi.May", "Fungi.July"))
+library(ggplot2)
 
 PLFA_plot <- ggplot(PLFA_fun_bac,
-            aes(x=interaction2, y = Total_Percent_Biomass,
-                fill = factor(Month, levels = c("October", "January", "March", "May", "July")))) + #change bar order
-  geom_boxplot()+
-  facet_wrap(~factor(Vegetation, levels=c('Grass', 'Mesquite-Grass', 'Mesquite')))+
+            aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")), y = Total_Percent_Biomass,
+                fill = factor(Month, levels = c("October", "January", "March", "May", "July"))))+  #change bar order
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(factor(Vegetation, levels=c('Grass', 'Mesquite-Grass', 'Mesquite'))~ Type)+
   scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
-  theme(axis.title.x = element_blank(), axis.text.x = element_text( vjust = 0.5), axis.ticks.x = element_blank()) + #remove x-axis title
+  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + #remove x-axis title
   ylab("% of Total Biomass")+ # change y axis label
-  ggtitle ("% of Fungi and Bacteria in Total Biomass Across 
-  Vegetation Types and Sampleing Periods") + #change title
+  ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods") + #change title
   #theme( text = element_text(size = 20)) + # change sizes for poster presentation
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
+PLFA_plot
 
-PLFA_plot + scale_x_discrete(labels=c( "Bacteria.October" = " ", "Bacteria.March" = "", "Bacteria.January" = "Bacteria",
-                            "Bacteria.May" = "", "Bacteria.July" = "",
-                              "Fungi.October" = "", "Fungi.March" = "", "Fungi.January" = "Fungi",
-                            "Fungi.May" = "", "Fungi.July" = "")) 
 
-mod.plfa <- aov(PLFA_fun_bac$Total_Percent_Biomass ~ PLFA_fun_bac$Type*PLFA_fun_bac$Month)
+
+mod.plfa <- aov(PLFA_fun_bac$Total_Percent_Biomass ~ PLFA_fun_bac$Type*PLFA_fun_bac$Month*PLFA_fun_bac$Vegetation)
 summary(mod.plfa)
 
 tuk.plfa <- TukeyHSD(mod.plfa)
 
+library(dplyr)
 ### filter TukeyHSD results to only show significant values
-as.data.frame(tuk.plfa$`PLFA_fun_bac$Type:PLFA_fun_bac$Month`) %>%
+x <- as.data.frame(tuk.plfa$`PLFA_fun_bac$Type:PLFA_fun_bac$Month:PLFA_fun_bac$Vegetation`) %>%
   filter(`p adj` < .05)
 
 ```
 
-- Total Biomass in ng
+- Total Biomass in ng/g
 
   - remove outlier:
   Mesquite	January	M2_a_Jan	28018.25
 ```{r}
 
 PLFA_total <- read.csv("Raw_data/Total_biomass.csv")
-
 
 PLFA_plot_total <- ggplot(PLFA_total,aes(x=Month, y = Total_Biomass,
   fill = factor(Month, levels = c("October", "January", "March", "May", "July")))) + 
