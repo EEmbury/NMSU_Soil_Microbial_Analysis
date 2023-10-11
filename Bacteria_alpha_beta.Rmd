@@ -41,6 +41,8 @@ knitr::opts_chunk$set(
 # https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
 
 ```{r}
+library(phyloseq)
+
 biom_data <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
 
 mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/metadata.tsv")
@@ -117,8 +119,8 @@ plot_ordination(phylo, ordBC, color = "vegetation") +
 #create data frame of metadata
 sampleDF <-  data.frame(sample_data(phylo))
 
-# adonis = Analysis of variance using distance matrices
-adon <- adonis(DistBC ~ vegetation, data = sampleDF)
+# adonis : Analysis of variance using distance matrices
+adonis2(DistBC ~ sampleDF$vegetation, data = sampleDF)
 
 library(pairwiseAdonis)
 pairwise.adonis(DistBC, phyloseq::sample_data(phylo)$vegetation)
