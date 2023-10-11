@@ -1,0 +1,131 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Bacteria Alpha and Beta Diversity
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+# **Import qiime formatted data**
+
+# https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r}
+biom_data <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/metadata.tsv")
+
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo <- merge_phyloseq(biom_data, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+rank_names(phylo)
+
+depths <- sample_sums(phylo)
+depths
+```
+
+# **Alpha Diversity**
+# https://joey711.github.io/phyloseq/plot_richness-examples.html
+# https://rpubs.com/lconteville/713954 
+
+```{r}
+
+richness <- estimate_richness(phylo)
+alpha_veg <- plot_richness(phylo, x = "vegetation")
+alpha_veg
+
+anova.sh.veg = aov(richness$Shannon ~ sample_data(phylo)$vegetation)
+summary(anova.sh.veg)
+
+TukeyHSD(anova.sh.veg)
+
+
+anova.sh.mo = aov(richness$Shannon ~ sample_data(phylo)$month)
+summary(anova.sh.mo)
+
+TukeyHSD(anova.sh.mo)
+
+```
+
+
+# **Beta Diversity**
+
+#http://evomics.org/wp-content/uploads/2016/01/phyloseq-Lab-01-Answers.html
+
+- adonis = essentially an ANOVA for distances
+- betadisper is a test of normality
+    - so non-significant is good because it data assumptions, therefore the adois can be trusted more
+    - see https://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html#permanova for more
+
+```{r}
+
+library(vegan)
+library(phyloseq)
+library(tidyverse)
+library(agricolae)
+library(rcompanion)
+
+# calculate Bray-Curtis distance using the vegan package
+DistBC <- distance(phylo, method = "bray")
+
+#ordinate bray distances
+ordBC <- ordinate(phylo, method = "NMDS", distance = DistBC)
+
+#plot distances
+plot_ordination(phylo, ordBC, color = "vegetation") + 
+  geom_point() +
+  ggtitle("NMDS: Bray-Curtis")+
+    stat_ellipse(size =.5) 
+
+
+
+#stats
+
+#create data frame of metadata
+sampleDF <-  data.frame(sample_data(phylo))
+
+# adonis = Analysis of variance using distance matrices
+adon <- adonis(DistBC ~ vegetation, data = sampleDF)
+
+library(pairwiseAdonis)
+pairwise.adonis(DistBC, phyloseq::sample_data(phylo)$vegetation)
+
+# betadisper - analysis of multivariate homogeneity of group dispersions (variances)
+beta <- betadisper(DistBC, sampleDF$vegetation)
+permutest(beta)
+
+
+```
