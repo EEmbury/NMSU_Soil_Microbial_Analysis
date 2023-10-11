@@ -188,7 +188,7 @@ CN_plot + stat_compare_means(comparisons = mycomparisons_veg, size = 3, step.inc
 
 - Fungal and Bacterial Biomass Percentage
 ```{r}
-PLFA_fun_bac <- read.csv("Raw_data/All_PLFA_fun_back.csv")
+PLFA_fun_bac <- read.csv("Raw_data/PLFA/All_PLFA_fun_back.csv")
 
 library(ggplot2)
 
@@ -226,7 +226,7 @@ x <- as.data.frame(tuk.plfa$`PLFA_fun_bac$Type:PLFA_fun_bac$Month:PLFA_fun_bac$V
   Mesquite	January	M2_a_Jan	28018.25
 ```{r}
 
-PLFA_total <- read.csv("Raw_data/Total_biomass.csv")
+PLFA_total <- read.csv("Raw_data/PLFA/Total_biomass.csv")
 
 PLFA_plot_total <- ggplot(PLFA_total,aes(x=Month, y = Total_Biomass,
   fill = factor(Month, levels = c("October", "January", "March", "May", "July")))) + 
@@ -421,3 +421,52 @@ Duniway, M. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block
 **Block 11** Mesquite site
 
 Duniway, M. 2023. Jornada Basin LTER Cross-scale Interactions Study (CSIS) Block 11 meteorological station: Daily average soil volumetric water content data: 2013 - ongoing ver 35. Environmental Data Initiative. https://doi.org/10.6073/pasta/501c5045cfb19930f9812b941cc98478 (Accessed 2023-09-11).
+
+
+
+
+# **Vegetation Cover** 
+
+- vegetation cover calculated from drone images
+- data for each month is the percentage vegetation cover of all three plots
+- sum vegetation/sum of plot area *100
+
+```{r}
+vegetation <- read.csv("Raw_data/vegetation_cover/all_months.csv", head = TRUE)
+
+#calculate average of all months for each vegetation type
+library(dplyr)
+vegetation$Means <-apply(vegetation [,3:7], 1 ,mean)
+
+vegetation$SiteID <- factor(vegetation$SiteID, levels = c("Grass", "Mesquite_Grass", "Mesquite"), 
+                  labels = c("Grass", "Mesquite Grass", "Mesquite"))
+
+#build pie chart
+library(ggplot2)
+library(ggeasy)
+library(ggrepel)
+library(tidyverse)
+
+m_label <- c("Mesquite Grass")
+names(m_label) <- c("Mesquite_Grass")
+
+ggplot(vegetation, aes(x="", y=Means, fill=Vegetation)) +
+  geom_bar(stat="identity", width=1) +
+  facet_wrap(~factor(SiteID, levels = c("Grass", "Mesquite Grass", "Mesquite")), strip.position = "bottom")+
+  coord_polar("y", start=0) +
+  ggtitle("% Vegetation Cover in Study Sites")+
+  theme_minimal()+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank(),
+        strip.text.x = element_text(size = 10, face = "bold"))+
+  geom_col(width = 1, color = 1) +
+  geom_text(aes(x = 1.15, label = paste0(round(Means, digits = 1), "%")), size=3.2,fontface='bold', 
+            position = position_stack(vjust = 0.5))+
+  ggeasy::easy_center_title()+
+  scale_fill_manual(values=c("Mesquite" ="#c1292e", "Bare" = "#e1bc29", "Grass" = "#679436"), name = "Vegetation") #add custom colors
+
+
+```
