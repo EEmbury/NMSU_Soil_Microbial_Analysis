@@ -44,7 +44,7 @@ library(phyloseq)
 
 biom_data <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
 
-mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/metadata.tsv")
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
 
 
 
