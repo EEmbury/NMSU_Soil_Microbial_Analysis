@@ -37,8 +37,7 @@ knitr::opts_chunk$set(
 
 
 # **Import qiime formatted data**
-
-# https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
 
 ```{r}
 library(phyloseq)
