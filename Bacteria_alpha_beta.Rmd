@@ -56,29 +56,41 @@ colnames(tax_table(phylo))= c("Kingdom","Phylum","Class","Order","Family","Genus
 rank_names(phylo)
 
 depths <- sample_sums(phylo)
-depths
 ```
 
 # **Alpha Diversity**
-# https://joey711.github.io/phyloseq/plot_richness-examples.html
-# https://rpubs.com/lconteville/713954 
+  - https://joey711.github.io/phyloseq/plot_richness-examples.html
+  - https://rpubs.com/lconteville/713954 
+
+
+- https://doi.org/10.1016/j.resmic.2018.03.004 states that shannon is the best index to use
+
+- "Simpson’s index (D) Estimator of species richness and species evenness: more weight on species evenness" -- https://doi.org/10.4014/jmb.1709.09027 
 
 ```{r}
 
 richness <- estimate_richness(phylo)
-alpha_veg <- plot_richness(phylo, x = "vegetation")
+alpha_veg <- plot_richness(phylo, x = "vegetation", measures = c("Simpson"))
 alpha_veg
 
+#Shannon
 anova.sh.veg = aov(richness$Shannon ~ sample_data(phylo)$vegetation)
 summary(anova.sh.veg)
 
 TukeyHSD(anova.sh.veg)
 
+#Simpson
+anova.smp.veg = aov(richness$Simpson ~ sample_data(phylo)$vegetation)
+summary(anova.smp.veg)
 
-anova.sh.mo = aov(richness$Shannon ~ sample_data(phylo)$month)
-summary(anova.sh.mo)
+TukeyHSD(anova.smp.veg)
 
-TukeyHSD(anova.sh.mo)
+
+#Chao1
+anova.ch.veg = aov(richness$Chao1 ~ sample_data(phylo)$vegetation)
+summary(anova.ch.veg)
+
+TukeyHSD(anova.ch.veg)
 
 ```
 
@@ -92,6 +104,7 @@ TukeyHSD(anova.sh.mo)
     - so non-significant is good because it data assumptions, therefore the adois can be trusted more
     - see https://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html#permanova for more
 
+- "Furthermore, beta-diversity measures might be chosen to make it easier to assess a specific hypothesis, such as changes in microbiome composition over time. For example, a Bray Curtis distance that uses all the abundance differences may be more sensitive to examine gradients of diversity with location or time" -- https://doi.org/10.1016/j.csbj.2022.04.032 
 ```{r}
 
 library(vegan)
@@ -125,7 +138,7 @@ adonis2(DistBC ~ sampleDF$vegetation, data = sampleDF)
 library(pairwiseAdonis)
 pairwise.adonis(DistBC, phyloseq::sample_data(phylo)$vegetation)
 
-# betadisper - analysis of multivariate homogeneity of group dispersions (variances)
+# betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$vegetation)
 permutest(beta)
 
