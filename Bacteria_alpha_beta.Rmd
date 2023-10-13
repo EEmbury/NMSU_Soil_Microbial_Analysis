@@ -42,19 +42,19 @@ knitr::opts_chunk$set(
 ```{r}
 library(phyloseq)
 
-biom_data <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+biom_data_rare <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_rare.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
 
 mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
 
 
 
 # Merge the OTU and mapping data into a phyloseq object
-phylo <- merge_phyloseq(biom_data, mapping_file)
+phylo_rare <- merge_phyloseq(biom_data_rare, mapping_file)
 #Add names to biom table and check phyloseq objects
-colnames(tax_table(phylo))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
-rank_names(phylo)
+colnames(tax_table(phylo_rare))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+rank_names(phylo_rare)
 
-depths <- sample_sums(phylo)
+depths <- sample_sums(phylo_rare)
 ```
 
 # **Alpha Diversity**
@@ -68,25 +68,25 @@ depths <- sample_sums(phylo)
 
 ```{r}
 
-richness <- estimate_richness(phylo)
-alpha_veg <- plot_richness(phylo, x = "vegetation", measures = c("Simpson"))
+richness <- estimate_richness(phylo_rare)
+alpha_veg <- plot_richness(phylo_rare, x = "vegetation", measures = c("Simpson"))
 alpha_veg
 
 #Shannon
-anova.sh.veg = aov(richness$Shannon ~ sample_data(phylo)$vegetation)
+anova.sh.veg = aov(richness$Shannon ~ sample_data(phylo_rare)$vegetation)
 summary(anova.sh.veg)
 
 TukeyHSD(anova.sh.veg)
 
 #Simpson
-anova.smp.veg = aov(richness$Simpson ~ sample_data(phylo)$vegetation)
+anova.smp.veg = aov(richness$Simpson ~ sample_data(phylo_rare)$vegetation)
 summary(anova.smp.veg)
 
 TukeyHSD(anova.smp.veg)
 
 
 #Chao1
-anova.ch.veg = aov(richness$Chao1 ~ sample_data(phylo)$vegetation)
+anova.ch.veg = aov(richness$Chao1 ~ sample_data(phylo_rare)$vegetation)
 summary(anova.ch.veg)
 
 TukeyHSD(anova.ch.veg)
@@ -113,13 +113,13 @@ library(agricolae)
 library(rcompanion)
 
 # calculate Bray-Curtis distance using the vegan package
-DistBC <- distance(phylo, method = "bray")
+DistBC <- distance(phylo_rare, method = "bray")
 
 #ordinate bray distances
-ordBC <- ordinate(phylo, method = "NMDS", distance = DistBC)
+ordBC <- ordinate(phylo_rare, method = "NMDS", distance = DistBC)
 
 #plot distances
-plot_ordination(phylo, ordBC, color = "vegetation") + 
+plot_ordination(phylo_rare, ordBC, color = "vegetation") + 
   geom_point() +
   ggtitle("NMDS: Bray-Curtis")+
     stat_ellipse(size =.5) 
@@ -129,13 +129,13 @@ plot_ordination(phylo, ordBC, color = "vegetation") +
 #stats
 
 #create data frame of metadata
-sampleDF <-  data.frame(sample_data(phylo))
+sampleDF <-  data.frame(sample_data(phylo_rare))
 
 # adonis : Analysis of variance using distance matrices
 adonis2(DistBC ~ sampleDF$vegetation, data = sampleDF)
 
 library(pairwiseAdonis)
-pairwise.adonis(DistBC, phyloseq::sample_data(phylo)$vegetation)
+pairwise.adonis(DistBC, phyloseq::sample_data(phylo_rare)$vegetation)
 
 # betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$vegetation)
