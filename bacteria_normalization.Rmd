@@ -1,0 +1,88 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Bacteria Decontam
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **import data**
+```{r}
+library(phyloseq)
+
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+
+```
+
+# **rm decontam**
+  - see bacteria_decontam file fro dtails
+  
+```{r}
+
+library(decontam)
+
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+biom_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+biom_rm_contaminat 
+
+
+```
+
+# **normalize data**
+  - https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html 
+  
+```{r}
+
+#remove any left over controls so they dont impact normalization
+biom_rm_contaminat_rm_cntrl = subset_samples(biom_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+
+deseq <- phyloseq_to_deseq2(biom_rm_contaminat_rm_cntrl, ~vegetation)
+
+library(DESeq2)
+
+dds <- estimateSizeFactors(deseq)
+sizeFactors(dds)
+
+normalized_counts <- counts(dds, normalized=TRUE)
+
+```
