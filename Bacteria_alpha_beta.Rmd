@@ -5,7 +5,7 @@ subtitle: '<span style = ''font-size:12pt;''> Bacteria Alpha and Beta Diversity
 </span>'
 author: "Emily Embury"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: html_document
 ---
 <style type="text/css">
 /* Whole document: */ 
@@ -42,20 +42,38 @@ knitr::opts_chunk$set(
 ```{r}
 library(phyloseq)
 
-biom_data_rare <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_rare.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
 
 mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
 
 
 
 # Merge the OTU and mapping data into a phyloseq object
-phylo_rare <- merge_phyloseq(biom_data_rare, mapping_file)
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
 #Add names to biom table and check phyloseq objects
-colnames(tax_table(phylo_rare))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
-rank_names(phylo_rare)
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+rank_names(phylo_raw)
 
-depths <- sample_sums(phylo_rare)
+depths <- sample_sums(phylo_raw)
 ```
+# **remove controls + contaminants**
+
+```{r}
+library(decontam)
+
+# threshold 0.5, identifies 9 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+#prune the contaminated taxa
+phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+phylo_rm_contaminat #after
+
+#remove any left over controls so they dont impact normalization
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+
+```
+
 
 # **Alpha Diversity**
   - https://joey711.github.io/phyloseq/plot_richness-examples.html
@@ -104,6 +122,8 @@ TukeyHSD(anova.ch.veg)
     - see https://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html#permanova for more
 
 - "Furthermore, beta-diversity measures might be chosen to make it easier to assess a specific hypothesis, such as changes in microbiome composition over time. For example, a Bray Curtis distance that uses all the abundance differences may be more sensitive to examine gradients of diversity with location or time" -- https://doi.org/10.1016/j.csbj.2022.04.032 
+
+-  https://doi.org/10.1111/2041-210X.13115 = proportions are the best way to normalize for BC distance in community analyses
 ```{r}
 
 library(vegan)
@@ -111,15 +131,23 @@ library(phyloseq)
 library(tidyverse)
 library(agricolae)
 library(rcompanion)
+library(microbiomeMarker)
+
+# normalize data with proportions (aka Total Sum Normalization)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("microbiomeMarker")
 
 # calculate Bray-Curtis distance using the vegan package
-DistBC <- distance(phylo_rare, method = "bray")
+DistBC <- distance(phylo_rm_contaminat_rm_cntrl, method = "bray")
 
 #ordinate bray distances
-ordBC <- ordinate(phylo_rare, method = "NMDS", distance = DistBC)
+ordBC <- ordinate(phylo_rm_contaminat_rm_cntrl, method = "NMDS", distance = DistBC)
 
 #plot distances
-plot_ordination(phylo_rare, ordBC, color = "vegetation") + 
+plot_ordination(phylo_rm_contaminat_rm_cntrl, ordBC, color = "vegetation") + 
   geom_point() +
   ggtitle("NMDS: Bray-Curtis")+
     stat_ellipse(size =.5) 
@@ -129,13 +157,13 @@ plot_ordination(phylo_rare, ordBC, color = "vegetation") +
 #stats
 
 #create data frame of metadata
-sampleDF <-  data.frame(sample_data(phylo_rare))
+sampleDF <-  data.frame(sample_data(phylo_rm_contaminat_rm_cntrl))
 
 # adonis : Analysis of variance using distance matrices
 adonis2(DistBC ~ sampleDF$vegetation, data = sampleDF)
 
 library(pairwiseAdonis)
-pairwise.adonis(DistBC, phyloseq::sample_data(phylo_rare)$vegetation)
+pairwise.adonis(DistBC, phyloseq::sample_data(phylo_rm_contaminat_rm_cntrl)$vegetation)
 
 # betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$vegetation)
