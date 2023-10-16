@@ -85,29 +85,44 @@ phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != 
 - "Simpson’s index (D) Estimator of species richness and species evenness: more weight on species evenness" -- https://doi.org/10.4014/jmb.1709.09027 
 
 ```{r}
-
-richness <- estimate_richness(phylo_rare)
-alpha_veg <- plot_richness(phylo_rare, x = "vegetation", measures = c("Simpson"))
-alpha_veg
+rare <- rarefy_even_depth(phylo_rm_contaminat_rm_cntrl, rngseed = 9999)
+richness <- estimate_richness(rare)
 
 #Shannon
-anova.sh.veg = aov(richness$Shannon ~ sample_data(phylo_rare)$vegetation)
+anova.sh.veg = aov(richness$Shannon ~ sample_data(rare)$vegetation*sample_data(rare)$month)
 summary(anova.sh.veg)
 
-TukeyHSD(anova.sh.veg)
+tukey.sh <- TukeyHSD(anova.sh.veg)
+
+alpha_veg_sh <- plot_richness(rare, x = "vegetation", measures = c("Shannon"))
+alpha_veg_sh
+
+alpha_mo_sh <- plot_richness(rare, x = "month", measures = c("Shannon"))
+alpha_mo_sh
 
 #Simpson
-anova.smp.veg = aov(richness$Simpson ~ sample_data(phylo_rare)$vegetation)
+anova.smp.veg = aov(richness$Simpson ~ sample_data(rare)$vegetation*sample_data(rare)$month)
 summary(anova.smp.veg)
 
-TukeyHSD(anova.smp.veg)
+tukey.smp <- TukeyHSD(anova.smp.veg)
 
+alpha_veg_simp <- plot_richness(rare, x = "vegetation", measures = c("Simpson"))
+alpha_veg_simp
+
+alpha_mo_simp <- plot_richness(rare, x = "month", measures = c("Simpson"))
+alpha_mo_simp
 
 #Chao1
-anova.ch.veg = aov(richness$Chao1 ~ sample_data(phylo_rare)$vegetation)
+anova.ch.veg = aov(richness$Chao1 ~ sample_data(rare)$vegetation*sample_data(rare)$month)
 summary(anova.ch.veg)
 
-TukeyHSD(anova.ch.veg)
+tukey.ch <- TukeyHSD(anova.ch.veg)
+
+alpha_veg_ch <- plot_richness(rare, x = "vegetation", measures = c("Chao1"))
+alpha_veg_ch
+
+alpha_mo_ch <- plot_richness(rare, x = "month", measures = c("Chao1"))
+alpha_mo_ch
 
 ```
 
@@ -123,7 +138,7 @@ TukeyHSD(anova.ch.veg)
 
 - "Furthermore, beta-diversity measures might be chosen to make it easier to assess a specific hypothesis, such as changes in microbiome composition over time. For example, a Bray Curtis distance that uses all the abundance differences may be more sensitive to examine gradients of diversity with location or time" -- https://doi.org/10.1016/j.csbj.2022.04.032 
 
--  https://doi.org/10.1111/2041-210X.13115 = proportions are the best way to normalize for BC distance in community analyses
+-  https://doi.org/10.1111/2041-210X.13115 = proportions and rarefy are the best way to normalize for BC distance in community analyses
 ```{r}
 
 library(vegan)
@@ -132,39 +147,61 @@ library(phyloseq)
 library(tidyverse)
 library(agricolae)
 library(rcompanion)
-library(microbiomeMarker)
 
-
-# normalize data with proportions (aka Total Sum Normalization (TSS))
-# package = microbiomeMarker
-phylo_tss <- normalize(phylo_rm_contaminat_rm_cntrl, method = "TSS")
-
+rare <- rarefy_even_depth(phylo_rm_contaminat_rm_cntrl, rngseed = 9999)
+  
 # calculate Bray-Curtis distance using the vegan package
-DistBC <- distance(phylo_tss, method = "bray")
+DistBC <- distance(rare, method = "bray")
 
 #ordinate bray distances
-ordBC <- ordinate(phylo_tss, method = "NMDS", distance = DistBC)
+ordBC <- ordinate(rare, method = "NMDS", distance = DistBC)
+
 
 #plot distances
-plot_ordination(phylo_tss, ordBC, color = "vegetation") + 
-  geom_point() +
+plot_ordination(rare, ordBC, color = "vegetation") + 
+  geom_point(size = 3, aes(shape = month)) +
   ggtitle("NMDS: Bray-Curtis")+
-    stat_ellipse(size =.5) 
+  stat_ellipse()+
+  scale_color_manual(values=c("Mesquite" ="#c1292e", "Mesquite_grass" = "#e1bc29", "Grass" = "#679436", name = "vegetation"))
 
 
-#stats
+
+#### Statistics ####
 
 #create data frame of metadata
-sampleDF <-  data.frame(sample_data(phylo_tss))
+sampleDF <-  data.frame(sample_data(rare))
 
 # adonis : Analysis of variance using distance matrices
-adonis2(DistBC ~ sampleDF$vegetation, data = sampleDF)
+adonis2(DistBC ~ sampleDF$vegetation*sampleDF$month, data = sampleDF)
+
+#### significance of vegetation ####
 
 library(pairwiseAdonis)
-pairwise.adonis(DistBC, phyloseq::sample_data(phylo_tss)$vegetation)
+pairwise.adonis(DistBC, phyloseq::sample_data(rare)$vegetation)
 
 # betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$vegetation)
+anova(beta)
+permutest(beta)
+plot(beta)
+
+#### significance of vegetation*month ####
+library(pairwiseAdonis)
+pairwise_adon <- pairwise.adonis(DistBC, phyloseq::sample_data(rare)$month_veg)
+
+library(dplyr)
+### filter pairwise results to only show significant values
+pa <- pairwise_adon %>%
+  filter(`p.adjusted` < .05) 
+
+if(nrow(pa) == 0){
+    print("data.frame is empty, no significant values")
+}else{
+    print("data.frame contains data")
+}
+
+# betadisper - analysis of multivariate homogeneity of group dispersion (variances)
+beta <- betadisper(DistBC, sampleDF$month_veg)
 anova(beta)
 permutest(beta)
 plot(beta)
