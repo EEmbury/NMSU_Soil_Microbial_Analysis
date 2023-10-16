@@ -114,12 +114,12 @@ TukeyHSD(anova.ch.veg)
 
 # **Beta Diversity**
 
-#http://evomics.org/wp-content/uploads/2016/01/phyloseq-Lab-01-Answers.html
+- http://evomics.org/wp-content/uploads/2016/01/phyloseq-Lab-01-Answers.html
+- https://www.youtube.com/watch?v=oLf0EpMJ4yA 
 
 - adonis = essentially an ANOVA for distances
-- betadisper is a test of normality
-    - so non-significant is good because it data assumptions, therefore the adois can be trusted more
-    - see https://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html#permanova for more
+- betadisper = testing for significant different variation
+
 
 - "Furthermore, beta-diversity measures might be chosen to make it easier to assess a specific hypothesis, such as changes in microbiome composition over time. For example, a Bray Curtis distance that uses all the abundance differences may be more sensitive to examine gradients of diversity with location or time" -- https://doi.org/10.1016/j.csbj.2022.04.032 
 
@@ -127,47 +127,47 @@ TukeyHSD(anova.ch.veg)
 ```{r}
 
 library(vegan)
+library(ggplot2)
 library(phyloseq)
 library(tidyverse)
 library(agricolae)
 library(rcompanion)
 library(microbiomeMarker)
 
-# normalize data with proportions (aka Total Sum Normalization)
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("microbiomeMarker")
+# normalize data with proportions (aka Total Sum Normalization (TSS))
+# package = microbiomeMarker
+phylo_tss <- normalize(phylo_rm_contaminat_rm_cntrl, method = "TSS")
 
 # calculate Bray-Curtis distance using the vegan package
-DistBC <- distance(phylo_rm_contaminat_rm_cntrl, method = "bray")
+DistBC <- distance(phylo_tss, method = "bray")
 
 #ordinate bray distances
-ordBC <- ordinate(phylo_rm_contaminat_rm_cntrl, method = "NMDS", distance = DistBC)
+ordBC <- ordinate(phylo_tss, method = "NMDS", distance = DistBC)
 
 #plot distances
-plot_ordination(phylo_rm_contaminat_rm_cntrl, ordBC, color = "vegetation") + 
+plot_ordination(phylo_tss, ordBC, color = "vegetation") + 
   geom_point() +
   ggtitle("NMDS: Bray-Curtis")+
     stat_ellipse(size =.5) 
 
 
-
 #stats
 
 #create data frame of metadata
-sampleDF <-  data.frame(sample_data(phylo_rm_contaminat_rm_cntrl))
+sampleDF <-  data.frame(sample_data(phylo_tss))
 
 # adonis : Analysis of variance using distance matrices
 adonis2(DistBC ~ sampleDF$vegetation, data = sampleDF)
 
 library(pairwiseAdonis)
-pairwise.adonis(DistBC, phyloseq::sample_data(phylo_rm_contaminat_rm_cntrl)$vegetation)
+pairwise.adonis(DistBC, phyloseq::sample_data(phylo_tss)$vegetation)
 
 # betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$vegetation)
+anova(beta)
 permutest(beta)
+plot(beta)
 
 
 ```
