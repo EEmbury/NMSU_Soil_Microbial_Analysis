@@ -1,0 +1,77 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> All PLFA Data
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 9,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **PLFA**
+    - Phospholipid Fatty Acid Analysis
+
+    - Thoughts so far (as of 10/5/2023): Vegetation does not seem to be a significant driver of biomass variation. Instead, seasonality appears to be a stronger driver of biomass variation.
+
+- Fungal and Bacterial Biomass Percentage
+```{r}
+PLFA_fun_bac <- read.csv("Raw_data/PLFA/All_PLFA_fun_back.csv")
+
+library(ggplot2)
+
+PLFA_plot <- ggplot(PLFA_fun_bac,
+            aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")), y = Total_Percent_Biomass,
+                fill = factor(Month, levels = c("October", "January", "March", "May", "July"))))+  #change bar order
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(factor(Vegetation, levels=c('Grass', 'Mesquite-Grass', 'Mesquite'))~ Type)+
+  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + #remove x-axis title
+  ylab("% of Total Biomass")+ # change y axis label
+  ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods") + #change title
+  #theme( text = element_text(size = 20)) + # change sizes for poster presentation
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
+
+PLFA_plot
+
+
+
+mod.plfa <- aov(PLFA_fun_bac$Total_Percent_Biomass ~ PLFA_fun_bac$Month*PLFA_fun_bac$Vegetation)
+summary(mod.plfa)
+
+tuk.plfa <- TukeyHSD(mod.plfa)
+
+library(dplyr)
+### filter TukeyHSD results to only show significant values
+x <- as.data.frame(tuk.plfa$`PLFA_fun_bac$Month:PLFA_fun_bac$Vegetation`) 
+
+x %>%
+filter(x$`p adj` < .05)
+
+```
