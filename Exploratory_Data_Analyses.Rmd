@@ -446,22 +446,88 @@ ggplot(weather[which(weather$Ppt_mm_Tot >0),], aes(x=Date, y=Ppt_mm_Tot, color =
 
 
 
-#get average temperature for three site types to test for significant differences
-library(plyr)
-temp_by_siteID<-ddply(weather,c("Month","SiteID"),summarise,mean=mean(Air_TempC_Avg))
-
-aov_temp <- aov(temp_by_siteID$mean ~ temp_by_siteID$Month*temp_by_siteID$SiteID)
+#test for significant differences in temp across veg type
+aov_temp <- (weather$Air_TempC_Avg ~ weather$Month*weather$SiteID)
 summary(aov_temp)
 
-    # no siginificant variation between site ID
+    # no significant variation between site ID in terms of temp
 
 
-#get average humidity for three site types to test for significant differences
-library(plyr)
-rh_by_siteID<-ddply(weather,c("Month","SiteID"),summarise,mean=mean(Relative_Humidity_Avg))
+#test for significant differences in humid across veg type
 
-aov_rh <- aov(rh_by_siteID$mean ~ rh_by_siteID$SiteID*rh_by_siteID$Month)
+aov_rh <- aov(weather$Relative_Humidity_Avg ~ weather$Month*weather$SiteID)
 summary(aov_rh)
+
+  # no significant variation between site ID in terms of rel. humidity
+
+
+#test for significant differences in precip across veg type
+
+aov_precip <- aov(weather$Ppt_mm_Tot ~ weather$Month*weather$SiteID)
+summary(aov_precip)
+
+
+
+### now that I know that there is no significant difference in the site types I will average the daily data points
+
+library("dplyr")                             
+ 
+# Specify data frame
+SiteID_mean <- weather %>%
+    # Specify group indicator, column, function
+    group_by(SiteID, Month) %>%
+    # Calculate the mean of the "Frequency" column for each group
+    summarise_at(vars(Ppt_mm_Tot),
+                 list(Mean_Precip = mean)) 
+
+
+# Specify data frame
+SiteID_mean_weather <- weather %>%
+    # Specify group indicator, column, function
+    group_by(Date) %>%
+    # Calculate the mean of the "x" column for each group
+    summarise_at(vars("Ppt_mm_Tot", "Relative_Humidity_Avg", "Air_TempC_Avg"), mean, na.rm = T)
+
+#Add month column      
+SiteID_mean_weather$Month = SiteID_mean_weather$Date
+
+SiteID_mean_weather$Month <- as.Date(SiteID_mean_weather$Month)
+
+SiteID_mean_weather$Month <- format(SiteID_mean_weather$Month, format = "%B")
+
+### daily total precipitation w/average data
+precip <- ggplot(SiteID_mean_weather[which(SiteID_mean_weather$Ppt_mm_Tot >0),], aes(x=Date, y=Ppt_mm_Tot, color = Month))+
+  geom_point() +
+  scale_x_date(date_labels = "%B", date_breaks = "1 month")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
+  ggtitle("2022-2023 Monthly Precipitation")+
+  ylab("Precipitation (mm)")+
+  xlab("Month")+
+  scale_colour_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"))
+
+### daily average humidity w/average data
+relhumid <- ggplot(SiteID_mean_weather, aes(x=Date, y=Relative_Humidity_Avg, color = Month))+
+  geom_point() +
+  scale_x_date(date_labels = "%B", date_breaks = "1 month")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
+  ggtitle("2022-2023 Monthly Relative Humidity")+
+  ylab("Average Relative Humidity")+
+  xlab("Month")+
+  scale_colour_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"))
+
+
+### daily average temperature w/averages
+temp <- ggplot(SiteID_mean_weather, aes(x=Date, y=Air_TempC_Avg, color = Month))+
+  geom_point() +
+  scale_x_date(date_labels = "%B", date_breaks = "1 month")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
+  ggtitle("2022-2023 Monthly Temperature")+
+  ylab("Average Air Temperature (C)")+
+  xlab("Month")+
+  scale_colour_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"))
+
+library(ggpubr)
+ggarrange(temp, relhumid, precip, ncol=1, nrow=3, common.legend = TRUE)
 
 ```
 
