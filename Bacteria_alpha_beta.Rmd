@@ -52,9 +52,6 @@ mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metad
 phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
 #Add names to biom table and check phyloseq objects
 colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
-rank_names(phylo_raw)
-
-depths <- sample_sums(phylo_raw)
 ```
 # **remove controls + contaminants**
 
@@ -72,6 +69,9 @@ phylo_rm_contaminat #after
 #remove any left over controls so they dont impact normalization
 phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
 
+## remove unknowns and archaea, leaving only bacteria
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+phylo_rm_contaminat_rm_cntrl<- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl)
 ```
 
 
