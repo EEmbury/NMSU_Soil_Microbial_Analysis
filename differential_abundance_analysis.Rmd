@@ -1,0 +1,151 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Differential Abundance Analysis
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 10,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r}
+library(phyloseq)
+
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+# **remove controls + contaminants**
+
+```{r}
+library(decontam)
+
+# threshold 0.5, identifies 9 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+#prune the contaminated taxa
+phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+phylo_rm_contaminat #after
+
+#remove any left over controls so they dont impact normalization
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+
+
+## remove archaea but keep unknowns
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+unknowns <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "Unassigned")
+phylo_rm_archaea <- prune_taxa(c(taxa_names(bac), taxa_names(unknowns)), phylo_rm_contaminat_rm_cntrl) 
+
+```
+
+# **Differential Abundance Analysis**
+  - https://microbiome.github.io/OMA/differential-abundance.html
+  - https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC.html 
+  - https://doi.org/10.1038/s41467-020-17041-7
+  
+  - https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html 
+  
+  - https://www.yanh.org/2021/01/01/microbiome-r/#differential-abundance-analysis 
+  
+```{r}
+library(ANCOMBC)
+library(tidyverse)
+library(DT)
+library(phyloseq)
+library(microbiome)
+
+# Aggregate to phylum level
+phylum_data = aggregate_taxa(phylo_rm_archaea, "Phylum")
+
+
+
+out = ancombc(phyloseq = phylum_data, formula = "vegetation", global = TRUE, group = "vegetation")
+
+#this will show grass vs. mesquite, and grass vs. transition
+
+res <- out$res
+
+
+tab_se = res$se
+col_name <- c("G to M", "G to MG")
+colnames(tab_se) = col_name
+tab_se %>% 
+  datatable(caption = "SEs from the Primary Result") %>%
+  formatRound(col_name[], digits = 2)
+
+
+tab_w = res$W
+colnames(tab_w) = col_name
+tab_w %>% 
+  datatable(caption = "Test Statistics from the Primary Result") %>%
+  formatRound(col_name[], digits = 2)
+
+tab_p = res$p_val
+colnames(tab_p) = col_name
+tab_p %>% 
+  datatable(caption = "P-values from the Primary Result") %>%
+  formatRound(col_name[], digits = 2)
+
+tab_q = res$q
+colnames(tab_q) = col_name
+tab_q %>% 
+  datatable(caption = "Adjusted p-values from the Primary Result") %>%
+  formatRound(col_name[], digits = 2)
+
+
+tab_diff = res$diff_abn
+colnames(tab_diff) = col_name
+tab_diff %>% 
+  datatable(caption = "Differentially Abundant Taxa from the Primary Result")
+
+
+samp_frac = out$samp_frac
+# Replace NA with 0
+samp_frac[is.na(samp_frac)] = 0 
+# Add pesudo-count (1) to avoid taking the log of 0
+log_obs_abn = log(out$feature_table + 1)
+# Adjust the log observed abundances
+log_corr_abn = t(t(log_obs_abn) - samp_frac)
+# Show the first 6 samples
+round(log_corr_abn[, 1:135], 2) %>% 
+  datatable(caption = "Bias-corrected log observed abundances")
+
+```
