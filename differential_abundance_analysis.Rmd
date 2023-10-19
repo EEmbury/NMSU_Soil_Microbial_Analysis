@@ -27,7 +27,7 @@ knitr::opts_chunk$set(
   message = FALSE,  
   cache = FALSE,        
   fig.align = "center", 
-  fig.height = 10,
+  fig.height = 6,
   fig.width = 6,
   class.source="bg-warning",
   class.output="bg-success"
@@ -44,7 +44,6 @@ library(phyloseq)
 biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
 
 mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
-
 
 
 # Merge the OTU and mapping data into a phyloseq object
@@ -69,10 +68,9 @@ phylo_rm_contaminat #after
 phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
 
 
-## remove archaea but keep unknowns
+## remove unknowns and archaea, keep only bacteria
 bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
-unknowns <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "Unassigned")
-phylo_rm_archaea <- prune_taxa(c(taxa_names(bac), taxa_names(unknowns)), phylo_rm_contaminat_rm_cntrl) 
+phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
 
 ```
 
@@ -81,71 +79,123 @@ phylo_rm_archaea <- prune_taxa(c(taxa_names(bac), taxa_names(unknowns)), phylo_r
   - https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC.html 
   - https://doi.org/10.1038/s41467-020-17041-7
   
-  - https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html 
+  -FOLLOWING THIS TUTORIAL: https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html 
   
   - https://www.yanh.org/2021/01/01/microbiome-r/#differential-abundance-analysis 
   
+  
 ```{r}
+library(scater)
 library(ANCOMBC)
 library(tidyverse)
 library(DT)
 library(phyloseq)
 library(microbiome)
-
-# Aggregate to phylum level
-phylum_data = aggregate_taxa(phylo_rm_archaea, "Phylum")
+library(mia)
 
 
+tse = mia::makeTreeSummarizedExperimentFromPhyloseq(phylo_rm_archaea)
 
-out = ancombc(phyloseq = phylum_data, formula = "vegetation", global = TRUE, group = "vegetation")
-
-#this will show grass vs. mesquite, and grass vs. transition
-
-res <- out$res
-
-
-tab_se = res$se
-col_name <- c("G to M", "G to MG")
-colnames(tab_se) = col_name
-tab_se %>% 
-  datatable(caption = "SEs from the Primary Result") %>%
-  formatRound(col_name[], digits = 2)
-
-
-tab_w = res$W
-colnames(tab_w) = col_name
-tab_w %>% 
-  datatable(caption = "Test Statistics from the Primary Result") %>%
-  formatRound(col_name[], digits = 2)
-
-tab_p = res$p_val
-colnames(tab_p) = col_name
-tab_p %>% 
-  datatable(caption = "P-values from the Primary Result") %>%
-  formatRound(col_name[], digits = 2)
-
-tab_q = res$q
-colnames(tab_q) = col_name
-tab_q %>% 
-  datatable(caption = "Adjusted p-values from the Primary Result") %>%
-  formatRound(col_name[], digits = 2)
+set.seed(123)
+# It should be noted that we have set the number of bootstrap samples (B) equal 
+# to 10 in the 'trend_control' function for computational expediency. 
+# However, it is recommended that users utilize the default value of B, 
+# which is 100, or larger values for optimal performance.
+output = ancombc2(data = tse, assay_name = "counts", tax_level = "Phylum",
+                  fix_formula = "vegetation", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "vegetation", struc_zero = TRUE, neg_lb = TRUE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = TRUE,
+                  iter_control = list(tol = 1e-2, max_iter = 20, 
+                                      verbose = TRUE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100),
+                  trend_control = list(contrast = list(matrix(c(1, 0, -1, 1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE),
+                                                       matrix(c(-1, 0, 1, -1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE),
+                                                       matrix(c(1, 0, 1, -1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE)),
+                                       node = list(2, 2, 1),
+                                       solver = "ECOS",
+                                       B = 10))
 
 
-tab_diff = res$diff_abn
-colnames(tab_diff) = col_name
-tab_diff %>% 
-  datatable(caption = "Differentially Abundant Taxa from the Primary Result")
+
+## From tutorial: "5.5 ANCOM-BC2 multiple pairwise comparisons"
+
+res_pair = output$res_pair %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_pair[1:21, ] %>%
+    datatable(caption = "ANCOM-BC2 Multiple Pairwise Comparisons")
+
+## From tutorial "4.6 ANCOM-BC2 multiple pairwise comparisons"
+
+res_pair = output$res_pair
+
+df_fig_pair1 = res_pair %>%
+    dplyr::filter(diff_vegetationMesquite == 1 |
+                      diff_vegetationMesquite_grass == 1 | 
+                      diff_vegetationMesquite_grass_vegetationMesquite == 1) %>%
+    dplyr::mutate(M = ifelse(diff_vegetationMesquite == 1, 
+                                round(lfc_vegetationMesquite, 2), 0),
+                  MG = ifelse(diff_vegetationMesquite_grass == 1, 
+                                round(lfc_vegetationMesquite_grass, 2), 0),
+                  MGM = ifelse(diff_vegetationMesquite_grass_vegetationMesquite == 1, 
+                                round(lfc_vegetationMesquite_grass_vegetationMesquite, 2), 0)) %>%
+    tidyr::pivot_longer(cols = M:MGM, 
+                        names_to = "group", values_to = "value") %>%
+    dplyr::arrange(taxon)
+
+df_fig_pair2 = res_pair %>%
+    dplyr::filter(diff_vegetationMesquite == 1 |
+                      diff_vegetationMesquite_grass == 1 | 
+                      diff_vegetationMesquite_grass_vegetationMesquite == 1) %>%
+    dplyr::mutate(M = ifelse(passed_ss_vegetationMesquite == 1 & diff_vegetationMesquite == 1, 
+                                "aquamarine3", "black"),
+                  MG = ifelse(passed_ss_vegetationMesquite_grass == 1 & diff_vegetationMesquite_grass == 1, 
+                                "aquamarine3", "black"),
+                  MGM = ifelse(passed_ss_vegetationMesquite_grass_vegetationMesquite == 1 & diff_vegetationMesquite_grass_vegetationMesquite == 1, 
+                                "aquamarine3", "black")) %>%
+    tidyr::pivot_longer(cols = M:MGM, 
+                        names_to = "group", values_to = "color") %>%
+    dplyr::arrange(taxon)
+
+df_fig_pair = df_fig_pair1 %>%
+    dplyr::left_join(df_fig_pair2, by = c("taxon", "group"))
+
+df_fig_pair$group = recode(df_fig_pair$group, 
+                          `M` = "Mesquite - Grass",
+                          `MG` = "Mesquite_grass - Grass",
+                          `MGM` = "Mesquite_grass - Mesquite")
+df_fig_pair$group = factor(df_fig_pair$group, 
+                          levels = c("Mesquite - Grass",
+                                     "Mesquite_grass - Grass", 
+                                     "Mesquite_grass - Mesquite"))
+
+lo = floor(min(df_fig_pair$value))
+up = ceiling(max(df_fig_pair$value))
+mid = (lo + up)/2
+fig_pair = df_fig_pair %>%
+    ggplot(aes(x = group, y = taxon, fill = value)) + 
+    geom_tile(color = "black") +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         na.value = "white", midpoint = mid, limit = c(lo, up),
+                         name = NULL) +
+    geom_text(aes(group, taxon, label = value, color = color), size = 4) +
+    scale_color_identity(guide = FALSE) +
+    labs(x = NULL, y = NULL, title = "Pairwise log fold changes") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+fig_pair
 
 
-samp_frac = out$samp_frac
-# Replace NA with 0
-samp_frac[is.na(samp_frac)] = 0 
-# Add pesudo-count (1) to avoid taking the log of 0
-log_obs_abn = log(out$feature_table + 1)
-# Adjust the log observed abundances
-log_corr_abn = t(t(log_obs_abn) - samp_frac)
-# Show the first 6 samples
-round(log_corr_abn[, 1:135], 2) %>% 
-  datatable(caption = "Bias-corrected log observed abundances")
+
 
 ```
