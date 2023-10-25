@@ -88,6 +88,15 @@ library(tidyverse)
 ll_aov <- aov(Biomass_change ~ Vegetation*Collection_period, data = litter_seived)
 summary(ll_aov)
 
+#check anova assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(ll_aov $residuals) #normal q-q plot, tests normality
+qqline(ll_aov $residuals, col = "red") #line of fit on q-q plot
+plot(ll_aov $fitted.values, ll_aov $residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+
 # tukeyHSD post-hoc
 ll_tuk <- TukeyHSD(ll_aov)
 
