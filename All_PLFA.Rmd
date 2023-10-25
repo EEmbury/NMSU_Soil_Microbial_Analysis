@@ -14,7 +14,7 @@ body{
 }
 /* Headers */
 h1{
-  font-size: 12pt;
+  font-size: 15pt;
 }
 </style>
 
@@ -35,12 +35,7 @@ knitr::opts_chunk$set(
 
 ```
 
-# **PLFA**
-    - Phospholipid Fatty Acid Analysis
-
-    - Thoughts so far (as of 10/5/2023): Vegetation does not seem to be a significant driver of biomass variation. Instead, seasonality appears to be a stronger driver of biomass variation.
-
-- Fungal and Bacterial Biomass Percentage
+# **Read in PLFA data**
 ```{r import_data}
 PLFA_fun <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
 PLFA_bac <- read.csv("Raw_data/PLFA/All_PLFA_bac.csv")
@@ -53,7 +48,7 @@ PLFA_bac <- read.csv("Raw_data/PLFA/All_PLFA_bac.csv")
 
 library(ggplot2)
 
-# re-lable abreviated veg
+# re-label abbreviated veg
 veg_types <- c(
   "M" = "Mesquite",
   "G" = "Grass", 
@@ -62,7 +57,9 @@ veg_types <- c(
 
 
 library(dplyr)
+#change order of variables so that the facet in the plot is in the best order
 PLFA_fun <- PLFA_fun %>% mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M")))
+#add a "Type" column so that the side facet label can be added in the final figure
 PLFA_fun$Type<-"Fungi"
 
 #plot fungal biomass
@@ -80,7 +77,6 @@ PLFA_plot_fun <- ggplot(PLFA_fun,
          strip.text.x = element_blank()) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
-PLFA_plot_fun
 ```
 
 # **Bacterial Plot**
@@ -90,7 +86,7 @@ PLFA_plot_fun
 
 library(ggplot2)
 
-# re-lable abreviated veg
+# re-label abbreviated veg
 veg_types <- c(
   "M" = "Mesquite",
   "G" = "Grass", 
@@ -98,7 +94,9 @@ veg_types <- c(
 )
 
 library(dplyr)
+#change order of variables so that the facet in the plot is in the best order
 PLFA_bac <- PLFA_bac %>% mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M")))
+#add a "Type" column so that the side facet label can be added in the final figure
 PLFA_bac$Type<-"Bacteria"
 
 #plot bacteria biomass
@@ -122,14 +120,19 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
 # **Fungal Stats**
 ```{r plfa_statistics_fungi}
 
+# anova model of biomass by vegetation and month
+  #month = month
+  #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
 mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev)
 
-
-#month = month
-#vegetation = mesquite, grass, or mesquite_grass
+#summary of anova results
 summary(mod.plfa.fun)
 
+#Post hoc analysis of anova
 tuk.plfa.fun <- TukeyHSD(mod.plfa.fun)
+
+#tukeyHSD pairwise vegetation results based on ANOVA model  
+tuk.plfa.fun$`PLFA_fun$Veg_abrev`
 
 library(dplyr)
 library(tibble)
@@ -156,9 +159,6 @@ fun <- G_fun %>%
 fun <- fun %>%
   full_join(T_fun, by = c("label", "diff", "lwr", "upr", "p adj"))
 
-#view relevant comparisons
-fun
-
 #filter for significant values
 fun_signif <- fun %>%
 filter(fun$`p adj` < .05) 
@@ -172,14 +172,20 @@ fun_signif
 # **Bacterial Stats**
 ```{r plfa_statistics_bacterial}
 
+
+# anova model of biomass by vegetation and month
+  #month = month
+  #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
 mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev)
 
-
-#month = month
-#vegetation = mesquite, grass, or mesquite_grass
+#summary of anova results
 summary(mod.plfa.bac)
 
+#Post hoc analysis of anova
 tuk.plfa.bac <- TukeyHSD(mod.plfa.bac)
+
+#tukeyHSD pairwise vegetation results based on ANOVA model
+tuk.plfa.bac$`PLFA_bac$Veg_abrev`
 
 library(dplyr)
 library(tibble)
@@ -206,9 +212,6 @@ bac <- G_bac %>%
 bac <- bac %>%
   full_join(T_bac, by = c("label", "diff", "lwr", "upr", "p adj"))
 
-#view relevant comparisons
-bac
-
 #filter for significant values
 bac_signif <- bac %>%
 filter(bac$`p adj` < .05) 
@@ -218,12 +221,11 @@ bac_signif
 
 
 ```
-# **Fungal p-values**
+# **Manually Set Fungal p-values**
 - https://csdaw.github.io/ggprism/articles/pvalues.html
 ```{r fun_signif_plot}
-# add tukeyHSD values to plot
-library(ggprism)
 
+library(ggprism)
 library(dplyr)
 library(tidyverse)
 library(ggpubr)
@@ -237,7 +239,7 @@ stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun) %
 # add column with complete tukey comparison
 stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
 
-# filter out everything not looking at vegtation:month
+# filter out everything not looking at vegetation:month
 stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
 
 
@@ -246,14 +248,14 @@ G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
 M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
 T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
 
-# merge relevant comparisons to one datafram
+# merge relevant comparisons to one dataframe
 fun_stat <- G_fun_stat %>%
   full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 
 fun_stat <- fun_stat %>%
   full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 
-# make a column with only Veg_abrev so that this dataset matches with the PLFA data
+# make a column with only Veg_abrev so that this data set matches with the PLFA data
 fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
 
 #remove vegetation abbreviation from group2
@@ -269,7 +271,7 @@ filter(fun_stat$p.adj < .05)
 
 library(dplyr)
 
-# select only the necessary columns from the dataframe 
+# select only the necessary columns from the data frame 
 grouped_for_plot_fun <- fun_stat %>%
   select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
    mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
@@ -289,11 +291,10 @@ fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun)
 
 ```
 
-
+# **Manually Set Bacterial p-values**
 ```{r bac_signif_plot}
-# add tukeyHSD values to plot
-library(ggprism)
 
+library(ggprism)
 library(dplyr)
 library(tidyverse)
 library(ggpubr)
@@ -357,6 +358,7 @@ bac_with_p <- PLFA_plot_bac +  add_pvalue(grouped_for_plot_bac)
 
 ```
 
+# **Compile Plots**
 ```{r}
 
 library(ggpubr)
@@ -364,11 +366,14 @@ library(ggpubr)
 figure <- ggarrange(bac_with_p, fun_with_p, 
           ncol = 1, nrow = 2)
 
-figure
-
-annotate_figure(figure,
+final <- annotate_figure(figure,
               top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
-               left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90),
+               left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90)
               )
+
+final
+
+#library(svglite)
+#ggsave(file="PLFA_all_ggarrange.svg", plot=final, width=9, height=8)
 
 ```
