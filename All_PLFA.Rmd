@@ -27,8 +27,8 @@ knitr::opts_chunk$set(
   message = FALSE,  
   cache = FALSE,        
   fig.align = "center", 
-  fig.height = 9,
-  fig.width = 6,
+  fig.height = 6,
+  fig.width = 8,
   class.source="bg-warning",
   class.output="bg-success"
 )
@@ -41,37 +41,303 @@ knitr::opts_chunk$set(
     - Thoughts so far (as of 10/5/2023): Vegetation does not seem to be a significant driver of biomass variation. Instead, seasonality appears to be a stronger driver of biomass variation.
 
 - Fungal and Bacterial Biomass Percentage
-```{r}
-PLFA_fun_bac <- read.csv("Raw_data/PLFA/All_PLFA_fun_back.csv")
+```{r import_data}
+PLFA_fun <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
+PLFA_bac <- read.csv("Raw_data/PLFA/All_PLFA_bac.csv")
+
+```
+# **Fungal Plot**
+```{r plot_plfa_fungi}
+
+# Fungi
 
 library(ggplot2)
 
-PLFA_plot <- ggplot(PLFA_fun_bac,
-            aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")), y = Total_Percent_Biomass,
-                fill = factor(Month, levels = c("October", "January", "March", "May", "July"))))+  #change bar order
-  geom_boxplot(show.legend = FALSE)+
-  facet_grid(factor(Vegetation, levels=c('Grass', 'Mesquite-Grass', 'Mesquite'))~ Type)+
-  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
-  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + #remove x-axis title
+# re-lable abreviated veg
+veg_types <- c(
+  "M" = "Mesquite",
+  "G" = "Grass", 
+  "T" = "Mesquite-Grass"
+)
+
+
+#plot fungal biomass
+PLFA_plot_fun <- ggplot(PLFA_fun,
+            aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")),
+                y = Total_Percent_Biomass))+
+  geom_boxplot(show.legend = FALSE, aes(fill=Month))+
+  facet_grid(~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
+ scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+ theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + 
   ylab("% of Total Biomass")+ # change y axis label
-  ggtitle ("% of Fungi and Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods") + #change title
-  #theme( text = element_text(size = 20)) + # change sizes for poster presentation
+  ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
+  theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
-PLFA_plot
+```
+
+# **Bacterial Plot**
+```{r plot_plfa_bacteria}
+
+# Bacteria
+
+library(ggplot2)
+
+# re-lable abreviated veg
+veg_types <- c(
+  "M" = "Mesquite",
+  "G" = "Grass", 
+  "T" = "Mesquite-Grass"
+)
 
 
+#plot bacteria biomass
+PLFA_plot_bac <- ggplot(PLFA_bac,
+            aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")),
+                y = Total_Percent_Biomass))+
+  geom_boxplot(show.legend = FALSE, aes(fill=Month))+
+  facet_grid(~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
+ scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+ theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + 
+  ylab("% of Total Biomass")+ # change y axis label
+  ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
+  theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
-mod.plfa <- aov(PLFA_fun_bac$Total_Percent_Biomass ~ PLFA_fun_bac$Month*PLFA_fun_bac$Vegetation)
-summary(mod.plfa)
+```
+# **Fungal Stats**
+```{r plfa_statistics_fungi}
 
-tuk.plfa <- TukeyHSD(mod.plfa)
+mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev)
+
+
+#month = month
+#vegetation = mesquite, grass, or mesquite_grass
+summary(mod.plfa.fun)
+
+tuk.plfa.fun <- TukeyHSD(mod.plfa.fun)
 
 library(dplyr)
-### filter TukeyHSD results to only show significant values
-x <- as.data.frame(tuk.plfa$`PLFA_fun_bac$Month:PLFA_fun_bac$Vegetation`) 
+library(tibble)
+library(utils)
+library(tidyverse)
 
-x %>%
-filter(x$`p adj` < .05)
+# convert tukey results to dataframe
+x.fun <- as.data.frame(tuk.plfa.fun$`PLFA_fun$Month:PLFA_fun$Veg_abrev`) 
+
+# get a column with the comparison labels
+y.fun <- tibble::rownames_to_column(x.fun, "label")
+
+
+#isolate comparisons that are relevant
+G_fun <- dplyr::filter(y.fun, grepl("^.*:G.*:G", label))
+M_fun <- dplyr::filter(y.fun, grepl("^.*:M.*:M", label)) 
+T_fun <- dplyr::filter(y.fun, grepl("^.*:T.*:T", label)) 
+
+
+# merge fungal data
+fun <- G_fun %>%
+  full_join(M_fun, by = c("label", "diff", "lwr", "upr", "p adj")) 
+
+fun <- fun %>%
+  full_join(T_fun, by = c("label", "diff", "lwr", "upr", "p adj"))
+
+#view relevant comparisons
+fun
+
+#filter for significant values
+fun_signif <- fun %>%
+filter(fun$`p adj` < .05) 
+
+#view signif
+fun_signif
+
+
+```
+
+# **Bacterial Stats**
+```{r plfa_statistics_bacterial}
+
+mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev)
+
+
+#month = month
+#vegetation = mesquite, grass, or mesquite_grass
+summary(mod.plfa.bac)
+
+tuk.plfa.bac <- TukeyHSD(mod.plfa.bac)
+
+library(dplyr)
+library(tibble)
+library(utils)
+library(tidyverse)
+
+# convert tukey results to dataframe
+x.bac <- as.data.frame(tuk.plfa.bac$`PLFA_bac$Month:PLFA_bac$Veg_abrev`) 
+
+# get a column with the comparison labels
+y.bac <- tibble::rownames_to_column(x.bac, "label")
+
+
+#isolate comparisons that are relevant
+G_bac <- dplyr::filter(y.bac, grepl("^.*:G.*:G", label))
+M_bac <- dplyr::filter(y.bac, grepl("^.*:M.*:M", label)) 
+T_bac <- dplyr::filter(y.bac, grepl("^.*:T.*:T", label)) 
+
+
+# merge fungal data
+bac <- G_bac %>%
+  full_join(M_bac, by = c("label", "diff", "lwr", "upr", "p adj")) 
+
+bac <- bac %>%
+  full_join(T_bac, by = c("label", "diff", "lwr", "upr", "p adj"))
+
+#view relevant comparisons
+bac
+
+#filter for significant values
+bac_signif <- bac %>%
+filter(bac$`p adj` < .05) 
+
+#view signif
+bac_signif
+
+
+```
+# **Fungal p-values**
+- https://csdaw.github.io/ggprism/articles/pvalues.html
+```{r fun_signif_plot}
+# add tukeyHSD values to plot
+library(ggprism)
+
+library(dplyr)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+
+
+# make tukey hsd dataframe with rstatix package
+stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun) %>%
+  tukey_hsd()
+
+# add column with complete tukey comparison
+stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
+
+# filter out everything not looking at vegtation:month
+stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
+
+
+#isolate comparisons that are relevant
+G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
+M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
+T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
+
+# merge relevant comparisons to one datafram
+fun_stat <- G_fun_stat %>%
+  full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+
+fun_stat <- fun_stat %>%
+  full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+
+# make a column with only Veg_abrev so that this dataset matches with the PLFA data
+fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
+
+#remove vegetation abbreviation from group2
+fun_stat$group2<- gsub(':G','',fun_stat$group2)
+fun_stat$group2<- gsub(':M','',fun_stat$group2)
+fun_stat$group2<- gsub(':T','',fun_stat$group2)
+
+
+#filter out non significant values
+fun_stat <- fun_stat %>%
+filter(fun_stat$p.adj < .05) 
+
+
+library(dplyr)
+
+# select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
+grouped_for_plot_fun <- fun_stat %>%
+  select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
+  mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+  as.tibble()
+  
+
+# manually add y-position for each p-value
+grouped_for_plot_fun <- grouped_for_plot_fun %>%
+  add_column(y.position = c(21, 19, 16, 17, 23, 21, 20,
+                            22, 18, 20, 16, 
+                            20, 14, 16, 22, 18))
+
+
+# merge the p-values with the plot
+PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun)
+
+```
+
+
+```{r bac_signif_plot}
+# add tukeyHSD values to plot
+library(ggprism)
+
+library(dplyr)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+
+
+# make tukey hsd dataframe with rstatix package
+stat.test.bac <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_bac) %>%
+  tukey_hsd()
+
+# add column with complete tukey comparison
+stat.test.bac$full_compar = paste(stat.test.bac$group1, stat.test.bac$group2, sep="-")
+
+# filter out everything not looking at vegtation:month
+stat.bac <- dplyr::filter(stat.test.bac, grepl("Month:Veg_abrev", term))
+
+
+#isolate comparisons that are relevant
+G_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:G.*:G", full_compar))
+M_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:M.*:M", full_compar))
+T_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:T.*:T", full_compar)) 
+
+# merge relevant comparisons to one datafram
+bac_stat <- G_bac_stat %>%
+  full_join(M_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+
+bac_stat <- bac_stat %>%
+  full_join(T_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+
+# make a column with only Veg_abrev so that this dataset matches with the PLFA data
+bac_stat <- separate(data = bac_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
+
+#remove vegetation abbreviation from group2
+bac_stat$group2<- gsub(':G','',bac_stat$group2)
+bac_stat$group2<- gsub(':M','',bac_stat$group2)
+bac_stat$group2<- gsub(':T','',bac_stat$group2)
+
+
+#filter out non significant values
+bac_stat <- bac_stat %>%
+filter(bac_stat$p.adj < .05) 
+
+
+library(dplyr)
+
+# select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
+grouped_for_plot_bac <- bac_stat %>%
+  select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
+  mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+  as.tibble()
+  
+#manually add y-position for each p-value
+grouped_for_plot_bac <- grouped_for_plot_bac %>%
+  add_column(y.position = c(21, 19, 16, 17, 23, 21, 
+                            22, 18, 20, 16, 1, 1,
+                            20, 14, 16, 22, 18, 1, 1, 1))
+
+
+# merge the p-values with the plot
+PLFA_plot_bac +  add_pvalue(grouped_for_plot_bac)
 
 ```

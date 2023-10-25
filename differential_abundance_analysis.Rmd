@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
   cache = FALSE,        
   fig.align = "center", 
   fig.height = 6,
-  fig.width = 6,
+  fig.width = 8,
   class.source="bg-warning",
   class.output="bg-success"
 )
@@ -38,7 +38,7 @@ knitr::opts_chunk$set(
 # **Import qiime formatted data**
   - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
 
-```{r}
+```{r import_data}
 library(phyloseq)
 
 biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
@@ -53,7 +53,7 @@ colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","G
 ```
 # **remove controls + contaminants**
 
-```{r}
+```{r clean_data}
 library(decontam)
 
 # threshold 0.5, identifies 9 contaminants
@@ -84,7 +84,7 @@ phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl)
   - https://www.yanh.org/2021/01/01/microbiome-r/#differential-abundance-analysis 
   
   
-```{r}
+```{r DAA_with_ANCOMBC}
 library(scater)
 library(ANCOMBC)
 library(tidyverse)
@@ -101,7 +101,7 @@ set.seed(123)
 # to 10 in the 'trend_control' function for computational expediency. 
 # However, it is recommended that users utilize the default value of B, 
 # which is 100, or larger values for optimal performance.
-output = ancombc2(data = tse, assay_name = "counts", tax_level = "Phylum",
+output = ancombc2(data = tse, assay_name = "counts", tax_level = "Class",
                   fix_formula = "vegetation", rand_formula = NULL,
                   p_adj_method = "holm", pseudo_sens = TRUE,
                   prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
@@ -126,7 +126,9 @@ output = ancombc2(data = tse, assay_name = "counts", tax_level = "Phylum",
                                        solver = "ECOS",
                                        B = 10))
 
+```
 
+```{r visualize_ANCOMBC2}
 
 ## From tutorial: "5.5 ANCOM-BC2 multiple pairwise comparisons"
 
@@ -186,7 +188,7 @@ fig_pair = df_fig_pair %>%
     ggplot(aes(x = group, y = taxon, fill = value)) + 
     geom_tile(color = "black") +
     scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                         na.value = "white", midpoint = mid, limit = c(lo, up),
+                         na.value = "white", midpoint = 0, limit = c(lo, up),
                          name = NULL) +
     geom_text(aes(group, taxon, label = value, color = color), size = 4) +
     scale_color_identity(guide = FALSE) +
@@ -194,8 +196,5 @@ fig_pair = df_fig_pair %>%
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
 fig_pair
-
-
-
 
 ```
