@@ -198,3 +198,8 @@ fig_pair = df_fig_pair %>%
 fig_pair
 
 ```
+
+```{r session_info}
+library(devtools)
+session_info()
+```

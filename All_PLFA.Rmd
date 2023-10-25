@@ -424,3 +424,8 @@ final
 #ggsave(file="PLFA_all_ggarrange.svg", plot=final, width=9, height=9)
 
 ```
+
+```{r session_info}
+library(devtools)
+session_info()
+```

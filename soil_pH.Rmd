@@ -169,3 +169,8 @@ ph_stat_month <- ph_stat_month %>%
 pH_plot_month + stat_pvalue_manual(ph_stat_month , label = "p.adj.signif", hide.ns = TRUE)
 
 ```
+
+```{r session_info}
+library(devtools)
+session_info()
+```

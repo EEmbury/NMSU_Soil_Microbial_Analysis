@@ -114,3 +114,8 @@ tuk_cp_veg <- as.data.frame(ll_tuk$`Vegetation:Collection_period`)
 tuk_cp_veg %>%
 filter(`p adj` < .05)
 ```
+
+```{r session_info}
+library(devtools)
+session_info()
+```

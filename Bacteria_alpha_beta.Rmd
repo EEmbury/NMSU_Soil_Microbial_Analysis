@@ -39,7 +39,7 @@ knitr::opts_chunk$set(
 # **Import qiime formatted data**
   - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
 
-```{r}
+```{r import_data}
 library(phyloseq)
 
 biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
@@ -55,7 +55,7 @@ colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","G
 ```
 # **remove controls + contaminants**
 
-```{r}
+```{r clean_data}
 library(decontam)
 
 # threshold 0.5, identifies 9 contaminants
@@ -84,13 +84,26 @@ phylo_rm_contaminat_rm_cntrl<- prune_taxa(c(taxa_names(bac)), phylo_rm_contamina
 
 - "Simpson’s index (D) Estimator of species richness and species evenness: more weight on species evenness" -- https://doi.org/10.4014/jmb.1709.09027 
 
-```{r}
+```{r rarefy}
 rare <- rarefy_even_depth(phylo_rm_contaminat_rm_cntrl, rngseed = 9999)
+
+```
+
+```{r alpha_Shannon}
 richness <- estimate_richness(rare)
 
 #Shannon
 anova.sh.veg = aov(richness$Shannon ~ sample_data(rare)$vegetation*sample_data(rare)$month)
 summary(anova.sh.veg)
+
+#check anova assumptions
+#check anova assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(anova.sh.veg$residuals) #normal q-q plot, tests normality
+qqline(anova.sh.veg$residuals, col = "red") #line of fit on q-q plot
+plot(anova.sh.veg$fitted.values, anova.sh.veg$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
 
 tukey.sh <- TukeyHSD(anova.sh.veg)
 
@@ -100,31 +113,8 @@ alpha_veg_sh
 alpha_mo_sh <- plot_richness(rare, x = "month", measures = c("Shannon"))
 alpha_mo_sh
 
-#Simpson
-anova.smp.veg = aov(richness$Simpson ~ sample_data(rare)$vegetation*sample_data(rare)$month)
-summary(anova.smp.veg)
-
-tukey.smp <- TukeyHSD(anova.smp.veg)
-
-alpha_veg_simp <- plot_richness(rare, x = "vegetation", measures = c("Simpson"))
-alpha_veg_simp
-
-alpha_mo_simp <- plot_richness(rare, x = "month", measures = c("Simpson"))
-alpha_mo_simp
-
-#Chao1
-anova.ch.veg = aov(richness$Chao1 ~ sample_data(rare)$vegetation*sample_data(rare)$month)
-summary(anova.ch.veg)
-
-tukey.ch <- TukeyHSD(anova.ch.veg)
-
-alpha_veg_ch <- plot_richness(rare, x = "vegetation", measures = c("Chao1"))
-alpha_veg_ch
-
-alpha_mo_ch <- plot_richness(rare, x = "month", measures = c("Chao1"))
-alpha_mo_ch
-
 ```
+
 
 
 # **Beta Diversity**
@@ -139,7 +129,7 @@ alpha_mo_ch
 - "Furthermore, beta-diversity measures might be chosen to make it easier to assess a specific hypothesis, such as changes in microbiome composition over time. For example, a Bray Curtis distance that uses all the abundance differences may be more sensitive to examine gradients of diversity with location or time" -- https://doi.org/10.1016/j.csbj.2022.04.032 
 
 -  https://doi.org/10.1111/2041-210X.13115 = proportions and rarefy are the best way to normalize for BC distance in community analyses
-```{r}
+```{r rarefy_data}
 
 library(vegan)
 library(ggplot2)
@@ -149,7 +139,10 @@ library(agricolae)
 library(rcompanion)
 
 rare <- rarefy_even_depth(phylo_rm_contaminat_rm_cntrl, rngseed = 9999)
+
+```
   
+```{r bray_dist_and_plot}
 # calculate Bray-Curtis distance using the vegan package
 DistBC <- distance(rare, method = "bray")
 
@@ -165,7 +158,9 @@ plot_ordination(rare, ordBC, color = "vegetation") +
   scale_color_manual(values=c("Mesquite" ="#c1292e", "Mesquite_grass" = "#e1bc29", "Grass" = "#679436", name = "vegetation"))
 
 
+```
 
+```{r beta_statistics}
 #### Statistics ####
 
 #create data frame of metadata
@@ -175,7 +170,6 @@ sampleDF <-  data.frame(sample_data(rare))
 adonis2(DistBC ~ sampleDF$vegetation*sampleDF$month, data = sampleDF)
 
 #### significance of vegetation ####
-
 library(pairwiseAdonis)
 pairwise.adonis(DistBC, phyloseq::sample_data(rare)$vegetation)
 
@@ -204,7 +198,10 @@ if(nrow(pa) == 0){
 beta <- betadisper(DistBC, sampleDF$month_veg)
 anova(beta)
 permutest(beta)
-plot(beta)
 
+```
 
+```{r session_info}
+library(devtools)
+session_info()
 ```

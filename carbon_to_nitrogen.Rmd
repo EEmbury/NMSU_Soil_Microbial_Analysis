@@ -209,3 +209,9 @@ CN_plot + stat_pvalue_manual(CN_stat_veg_month_rel)
 
 
 ```
+
+
+```{r session_info}
+library(devtools)
+session_info()
+```
