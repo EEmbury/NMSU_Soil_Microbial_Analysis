@@ -53,7 +53,7 @@ metadata <- metadata %>% drop_na()
 
 #re label 
 metadata$vegetation <- factor(metadata$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
-                  labels = c("Grass", "Mesquite-Grass", "Mesquite"))
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite"))
 
 metadata$month <- factor(metadata$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
                   labels = c("October", "January", "March", "May", "July"))
@@ -82,7 +82,7 @@ pH_plot_veg <- ggplot(metadata, aes(x=vegetation,
   stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
   xlab("Vegetation") + # change x axis label
   ylab("pH")+ # change y axis label
-  scale_fill_manual(values=c("Mesquite" ="#c1292e", "Mesquite-Grass" = "#e1bc29", "Grass" = "#679436"))+
+  scale_fill_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436"))+
   ggtitle("Soil pH: Vegatation Variation")
 
 pH_plot_month <- ggplot(metadata, aes(x=month, 
@@ -110,6 +110,15 @@ pH_plot_month <- ggplot(metadata, aes(x=month,
 aov_ph <- aov(soil_pH ~ vegetation*month, data = metadata)
 summary(aov_ph)
 
+#check anova assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(aov_ph$residuals) #normal q-q plot, tests normality
+qqline(aov_ph$residuals, col = "red") #line of fit on q-q plot
+plot(aov_ph$fitted.values, aov_ph$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+#post hoc analysis
 ph_tuk <- TukeyHSD(aov_ph)
 
 #view ph:vegetation tukey results
