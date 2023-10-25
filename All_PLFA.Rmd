@@ -40,6 +40,7 @@ knitr::opts_chunk$set(
 PLFA_fun <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
 PLFA_bac <- read.csv("Raw_data/PLFA/All_PLFA_bac.csv")
 
+
 ```
 # **Fungal Plot**
 ```{r plot_plfa_fungi}
@@ -68,7 +69,7 @@ PLFA_plot_fun <- ggplot(PLFA_fun,
                 y = Total_Percent_Biomass))+
   geom_boxplot(show.legend = FALSE, aes(fill=Month))+
   facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
- scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+ scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 60))+ # change y-axis to percentage
   theme_linedraw()+
  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
        axis.title.y = element_blank()) + 
@@ -90,7 +91,7 @@ library(ggplot2)
 veg_types <- c(
   "M" = "Mesquite",
   "G" = "Grass", 
-  "T" = "Mesquite-Grass"
+  "T" = "Grass-Mesquite"
 )
 
 library(dplyr)
@@ -117,6 +118,8 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
 
 
 ```
+
+
 # **Fungal Stats**
 ```{r plfa_statistics_fungi}
 
@@ -125,14 +128,45 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
   #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
 mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev)
 
+#check assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(mod.plfa.fun$residuals) #normal q-q plot, tests normality
+qqline(mod.plfa.fun$residuals, col = "red") #line of fit on q-q plot
+plot(mod.plfa.fun$fitted.values, mod.plfa.fun$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+library(tidyverse)
+library(dplyr)
+
+#fungal data does not meet normallity assumptions, must log transform for anova
+PLFA_fun2 <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
+PLFA_fun2$Total_Percent_Biomass<- log10(PLFA_fun2$Total_Percent_Biomass)
+PLFA_fun2 <- PLFA_fun2 %>% 
+  filter_at(vars(Total_Percent_Biomass), all_vars(!is.infinite(.)))
+
+
+
+mod.plfa.fun2 <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev)
+
+#check assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(mod.plfa.fun2 $residuals) #normal q-q plot, tests normality
+qqline(mod.plfa.fun2 $residuals, col = "red") #line of fit on q-q plot
+plot(mod.plfa.fun2 $fitted.values, mod.plfa.fun2 $residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+
+
 #summary of anova results
-summary(mod.plfa.fun)
+summary(mod.plfa.fun2)
 
 #Post hoc analysis of anova
-tuk.plfa.fun <- TukeyHSD(mod.plfa.fun)
+tuk.plfa.fun2 <- TukeyHSD(mod.plfa.fun2)
 
 #tukeyHSD pairwise vegetation results based on ANOVA model  
-tuk.plfa.fun$`PLFA_fun$Veg_abrev`
+tuk.plfa.fun2$`PLFA_fun2$Veg_abrev`
 
 library(dplyr)
 library(tibble)
@@ -140,7 +174,7 @@ library(utils)
 library(tidyverse)
 
 # convert tukey results to dataframe
-x.fun <- as.data.frame(tuk.plfa.fun$`PLFA_fun$Month:PLFA_fun$Veg_abrev`) 
+x.fun <- as.data.frame(tuk.plfa.fun2$`PLFA_fun2$Month:PLFA_fun2$Veg_abrev`) 
 
 # get a column with the comparison labels
 y.fun <- tibble::rownames_to_column(x.fun, "label")
@@ -181,6 +215,19 @@ mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg
 #summary of anova results
 summary(mod.plfa.bac)
 
+
+#check anova assumptions
+
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(mod.plfa.bac$residuals) #normal q-q plot, tests normality
+qqline(mod.plfa.bac$residuals, col = "red") #line of fit on q-q plot
+plot(mod.plfa.bac$fitted.values, mod.plfa.bac$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+
+
+
 #Post hoc analysis of anova
 tuk.plfa.bac <- TukeyHSD(mod.plfa.bac)
 
@@ -219,7 +266,6 @@ filter(bac$`p adj` < .05)
 #view signif
 bac_signif
 
-
 ```
 # **Manually Set Fungal p-values**
 - https://csdaw.github.io/ggprism/articles/pvalues.html
@@ -233,7 +279,7 @@ library(rstatix)
 
 
 # make tukey hsd dataframe with rstatix package
-stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun) %>%
+stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
   tukey_hsd()
 
 # add column with complete tukey comparison
@@ -280,14 +326,15 @@ grouped_for_plot_fun <- fun_stat %>%
 
 # manually add y-position for each p-value
 grouped_for_plot_fun <- grouped_for_plot_fun %>%
-  add_column(y.position = c(25, 17, 23.5, 21, 28, 19, 26.5,
-                            22, 18, 20, 16, 
-                            20, 14, 16, 22, 18))
+  add_column(y.position = c(40, 35, 30, 50, 25, 45,
+                            40, 35, 30, 25, 45, 
+                            40, 35, 30, 50, 25, 45))
 
 
 
 # merge the p-values with the plot
 fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
+
 
 ```
 
@@ -374,6 +421,6 @@ final <- annotate_figure(figure,
 final
 
 #library(svglite)
-#ggsave(file="PLFA_all_ggarrange.svg", plot=final, width=9, height=8)
+#ggsave(file="PLFA_all_ggarrange.svg", plot=final, width=9, height=9)
 
 ```

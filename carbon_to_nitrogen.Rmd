@@ -47,12 +47,12 @@ metadata <- metadata %>% drop_na()
 
 #re label 
 metadata$vegetation <- factor(metadata$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
-                  labels = c("Grass", "Mesquite-Grass", "Mesquite")) 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
 
 metadata$month <- factor(metadata$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
                   labels = c("October", "January", "March", "May", "July"))
 
-metadata$veg_abrev <- factor(metadata$vegetation, levels = c("Grass", "Mesquite-Grass", "Mesquite"), 
+metadata$veg_abrev <- factor(metadata$vegetation, levels = c("Grass", "Grass-Mesquite", "Mesquite"), 
                   labels = c("M", "T", "G"))
 
 ```
@@ -86,7 +86,7 @@ CN_plot_veg <- ggplot(metadata, aes(x=vegetation, #change order of x-axis
   stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
   xlab("Vegetation") + # change x axis label
   ylab("Carbon to Nitrogen")+ # change y axis label
- scale_fill_manual(values=c("Mesquite" ="#c1292e", "Mesquite-Grass" = "#e1bc29", "Grass" = "#679436"))+
+ scale_fill_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436"))+
   ggtitle("Carbon to Nitrogen Ratio: Vegatation Variation")
 
 ```
@@ -98,6 +98,15 @@ CN_plot_veg <- ggplot(metadata, aes(x=vegetation, #change order of x-axis
 #anova of C:N by month/vegetation
 cn_aov <- aov(carbon_to_nitrogen_ratio ~ month*vegetation, data = metadata)
 summary(cn_aov)
+
+#check anova assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(cn_aov$residuals) #normal q-q plot, tests normality
+qqline(cn_aov$residuals, col = "red") #line of fit on q-q plot
+plot(cn_aov$fitted.values, cn_aov$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
 
 #tukey post hoc of anova
 cn_tuk <- TukeyHSD(cn_aov)
@@ -181,7 +190,7 @@ CN_stat_veg_month_rel <- separate(data = CN_stat_veg_month_rel, col = group1, in
 
 
 CN_stat_veg_month_rel$vegetation <- factor(CN_stat_veg_month_rel$veg_abrev, levels = c("G", "T", "M"), 
-                  labels = c("Grass", "Mesquite-Grass", "Mesquite"))
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite"))
 
 #remove vegetation from group2
 CN_stat_veg_month_rel$group2<- gsub(':G','',CN_stat_veg_month_rel$group2)
