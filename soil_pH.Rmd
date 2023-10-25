@@ -1,0 +1,162 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Soil pH
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 15pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 6,
+  fig.width = 9,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Soil pH**
+
+- There were issues with the pH soil probe so all data using that probe will not be included in any analyses
+- All pH measurements are from soil samples sent to RegenAg
+
+# **Import Data**
+
+```{r}
+
+metadata <- read.csv("Bacteria/CORRECTED_metadata.csv", header = TRUE)
+
+library(dtplyr)
+library(tidyverse)
+#remove controls to remove NAs
+metadata <- metadata %>% drop_na()
+
+#re label 
+metadata$vegetation <- factor(metadata$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Mesquite-Grass", "Mesquite"))
+
+metadata$month <- factor(metadata$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+```
+
+```{r}
+#plot data
+library(ggplot2)
+
+pH_plot <- ggplot(metadata, aes(x=month, #change order of x-axis
+                          y=soil_pH))+
+  geom_boxplot()+
+  facet_wrap(~factor(vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite")))+
+  stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
+  xlab("Vegetation") + # change x axis label
+  ylab("pH") # change y axis label
+
+
+
+pH_plot_veg <- ggplot(metadata, aes(x=vegetation, 
+                          y=soil_pH))+
+  geom_boxplot(show.legend = FALSE, aes(fill = vegetation))+
+  theme_linedraw()+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
+  xlab("Vegetation") + # change x axis label
+  ylab("pH")+ # change y axis label
+  scale_fill_manual(values=c("Mesquite" ="#c1292e", "Mesquite-Grass" = "#e1bc29", "Grass" = "#679436"))+
+  ggtitle("Soil pH: Vegatation Variation")
+
+pH_plot_month <- ggplot(metadata, aes(x=month, 
+                          y=soil_pH))+
+  geom_boxplot(show.legend = FALSE, aes(fill = month))+
+  theme_linedraw()+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  stat_summary(fun.y=mean, geom="point", shape=23, color="red", fill="yellow") +
+  xlab("Month") + # change x axis label
+  ylab("pH") +# change y axis label
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "month")+
+  ggtitle("Soil pH: Seasonal Variation")
+
+
+```
+
+#**statistical analyses**
+
+  - so overall, there is no significant pairwise change in seasonality in a specific vegetation type. There are monthly differences in pH, but they are not related to vegetation differences.
+  
+  - as there seems to be a stronger vegetation based driver of pH rather than monthly, I will facet the graph by vegetation
+```{r}
+
+#anova of soil pH and vegetation/month
+aov_ph <- aov(soil_pH ~ vegetation*month, data = metadata)
+summary(aov_ph)
+
+ph_tuk <- TukeyHSD(aov_ph)
+
+#view ph:vegetation tukey results
+ph_tuk$vegetation
+
+#view ph:month tukey results
+ph_tuk$month
+
+```
+
+```{r}
+
+#add P values
+library(ggpubr)
+library(tidyverse)
+library(rstatix)
+#### for vegetation plot ####
+#tukeyhsd data frame
+pH_stat <- aov(soil_pH ~ month*vegetation, data = metadata) %>%
+      tukey_hsd() 
+
+#filter to only desired comparisons
+ph_stat_veg <- dplyr::filter(pH_stat, grepl("^vegetation", term))
+
+# manually add y position
+ph_stat_veg <- ph_stat_veg %>%
+ mutate(y.position = c(8.7, 9, 9))
+
+# add p-values to plot
+pH_plot_veg + stat_pvalue_manual(ph_stat_veg , label = "p.adj.signif", hide.ns = TRUE)
+
+
+
+
+#### for month plot ####
+#tukeyhsd data frame
+pH_stat <- aov(soil_pH ~ month*vegetation, data = metadata) %>%
+      tukey_hsd() 
+
+#filter to only desired comparisons
+ph_stat_month <- dplyr::filter(pH_stat, grepl("^month$", term))
+
+# manually add y position
+ph_stat_month <- ph_stat_month %>%
+ mutate(y.position = c(1, 1, 1, 1, 1, 1, 9, 1, 8.7, 1))
+
+# add p-values to plot
+pH_plot_month + stat_pvalue_manual(ph_stat_month , label = "p.adj.signif", hide.ns = TRUE)
+
+```
