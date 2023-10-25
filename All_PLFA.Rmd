@@ -27,8 +27,8 @@ knitr::opts_chunk$set(
   message = FALSE,  
   cache = FALSE,        
   fig.align = "center", 
-  fig.height = 6,
-  fig.width = 8,
+  fig.height = 8,
+  fig.width = 9,
   class.source="bg-warning",
   class.output="bg-success"
 )
@@ -61,19 +61,26 @@ veg_types <- c(
 )
 
 
+library(dplyr)
+PLFA_fun <- PLFA_fun %>% mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M")))
+PLFA_fun$Type<-"Fungi"
+
 #plot fungal biomass
 PLFA_plot_fun <- ggplot(PLFA_fun,
             aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")),
                 y = Total_Percent_Biomass))+
   geom_boxplot(show.legend = FALSE, aes(fill=Month))+
-  facet_grid(~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
+  facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
- theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + 
-  ylab("% of Total Biomass")+ # change y axis label
-  ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
-  theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  theme_linedraw()+
+ theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
+       axis.title.y = element_blank()) + 
+  #ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
+  theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+         strip.text.x = element_blank()) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
+PLFA_plot_fun
 ```
 
 # **Bacterial Plot**
@@ -90,19 +97,26 @@ veg_types <- c(
   "T" = "Mesquite-Grass"
 )
 
+library(dplyr)
+PLFA_bac <- PLFA_bac %>% mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M")))
+PLFA_bac$Type<-"Bacteria"
 
 #plot bacteria biomass
 PLFA_plot_bac <- ggplot(PLFA_bac,
             aes(x=factor(Month, levels = c("October", "January", "March", "May", "July")),
                 y = Total_Percent_Biomass))+
   geom_boxplot(show.legend = FALSE, aes(fill=Month))+
-  facet_grid(~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
+  facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
- theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank()) + 
-  ylab("% of Total Biomass")+ # change y axis label
-  ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
-  theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  theme_linedraw()+
+ theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
+       axis.title.y = element_blank()) + 
+  #ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
+  theme( text = element_text(size = 12), 
+         axis.text.x = element_blank()) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
+
+
 
 ```
 # **Fungal Stats**
@@ -255,22 +269,23 @@ filter(fun_stat$p.adj < .05)
 
 library(dplyr)
 
-# select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
+# select only the necessary columns from the dataframe 
 grouped_for_plot_fun <- fun_stat %>%
   select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
-  mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+   mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
   as.tibble()
   
 
 # manually add y-position for each p-value
 grouped_for_plot_fun <- grouped_for_plot_fun %>%
-  add_column(y.position = c(21, 19, 16, 17, 23, 21, 20,
+  add_column(y.position = c(25, 17, 23.5, 21, 28, 19, 26.5,
                             22, 18, 20, 16, 
                             20, 14, 16, 22, 18))
 
 
+
 # merge the p-values with the plot
-PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun)
+fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
 
 ```
 
@@ -332,12 +347,28 @@ grouped_for_plot_bac <- bac_stat %>%
   
 #manually add y-position for each p-value
 grouped_for_plot_bac <- grouped_for_plot_bac %>%
-  add_column(y.position = c(21, 19, 16, 17, 23, 21, 
-                            22, 18, 20, 16, 1, 1,
-                            20, 14, 16, 22, 18, 1, 1, 1))
+  add_column(y.position = c(55, 51, 46, 62, 43, 59, 
+                            54, 50, 46, 62, 43, 59,
+                            53, 45, 49, 38, 62, 33, 56, 59))
 
 
 # merge the p-values with the plot
-PLFA_plot_bac +  add_pvalue(grouped_for_plot_bac)
+bac_with_p <- PLFA_plot_bac +  add_pvalue(grouped_for_plot_bac)
+
+```
+
+```{r}
+
+library(ggpubr)
+
+figure <- ggarrange(bac_with_p, fun_with_p, 
+          ncol = 1, nrow = 2)
+
+figure
+
+annotate_figure(figure,
+              top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
+               left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90),
+              )
 
 ```
