@@ -152,3 +152,14 @@ library(ggpubr)
 ggarrange(temp, relhumid, precip, ncol=1, nrow=3, common.legend = TRUE)
 
 ```
+
+#**Calculate monthly averages**
+```{r}
+library(dplyr)
+
+weather_avg <- SiteID_mean_weather %>%
+  group_by(Month) %>%
+  summarise_at(vars(Relative_Humidity_Avg, Ppt_mm_Tot, Air_TempC_Avg), list(name = mean))
+
+#write_csv(weather_avg, "Raw_data/JRN_temp_humid/monthly_avg_weather.csv")
+```
