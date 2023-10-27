@@ -79,12 +79,18 @@ phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl)
 library(tibble)
 library(dplyr)
 
+#relative abundance
+phylo_rm_archaea  = transform_sample_counts(phylo_rm_archaea, function(x) x / sum(x) )
+phylo_rm_archaea = filter_taxa(phylo_rm_archaea, function(x) sd(x)/mean(x) > 3.0, TRUE)
+
 # Extract abundance matrix from the phyloseq object
 OTU1 = as(otu_table(phylo_rm_archaea), "matrix")
 # transpose if necessary
 if(taxa_are_rows(phylo_rm_archaea)){OTU1 <- t(OTU1)}
 # Coerce to data.frame
 OTUdf = as.data.frame(OTU1)
+
+
 
 #extract taxa table
 taxa = as(tax_table(phylo_rm_archaea), "matrix")
@@ -101,6 +107,13 @@ metadata$month_veg = paste(metadata$month, metadata$megetation, sep="-")
 OTUdf2 <- tibble::rownames_to_column(OTUdf, "sample.id")
 OTUdf_merge <- merge(metadata, OTUdf2, by.y= "sample.id")
 
+
+#merge taxa table with otu table
+OTU1 = as(otu_table(phylo_rm_archaea), "matrix")
+OTU1 = as.data.frame(OTU1)
+OTU1 <- tibble::rownames_to_column(OTU1, "sample.id")
+
+OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 ```
 
 
@@ -116,9 +129,8 @@ bac.veg.ISA <- multipatt(x = OTUdf,
 cluster = OTUdf_merge$vegetation,
 duleg = TRUE, control = how(nperm=999))
 
-#summary(bac.veg.ISA)
-  # Total number of species: 17855
-  # Selected number of species: 3692 
+summary(bac.veg.ISA)
+
 
 #convert to data frame with sample id column
 indisp_veg <- as.data.frame(bac.veg.ISA$sign, keep.rownames = TRUE)
@@ -126,7 +138,7 @@ indisp_veg <- tibble::rownames_to_column(indisp_veg, "sample.id")
 
 
 #merge taxa table with significant indicator species
-indisp_veg_taxa <- merge(taxadf, indisp_veg, by.y= "sample.id")
+indisp_veg_taxa <- merge(OTU_taxa_merge, indisp_veg, by.y= "sample.id")
 
 #filter out non significant values
 library(dplyr)
@@ -140,9 +152,8 @@ bac.month.ISA <- multipatt(x = OTUdf,
 cluster = OTUdf_merge$month,
 duleg = TRUE, control = how(nperm=999))
 
-#summary(bac.month.ISA)
- # Total number of species: 17855
- # Selected number of species: 1042
+summary(bac.month.ISA)
+
 
 #convert to data frame with sample id column
 indisp_month <- as.data.frame(bac.month.ISA$sign, keep.rownames = TRUE)
@@ -150,7 +161,7 @@ indisp_month <- tibble::rownames_to_column(indisp_month, "sample.id")
 
 
 #merge taxa table with significant indicator species
-indisp_month_taxa <- merge(taxadf, indisp_month, by.y= "sample.id")
+indisp_month_taxa <- merge(OTU_taxa_merge, indisp_month, by.y= "sample.id")
 
 #filter out non significant values
 library(dplyr)
@@ -165,9 +176,8 @@ bac.month.veg.ISA <- multipatt(x = OTUdf,
 cluster = OTUdf_merge$month_veg,
 duleg = TRUE, control = how(nperm=999))
 
-#summary(bac.month.veg.ISA)
-  # Total number of species: 17855
-  # Selected number of species: 1059 
+summary(bac.month.veg.ISA)
+
 
 #filter out non significant values
 indisp_month_veg <- as.data.frame(bac.month.veg.ISA$sign, keep.rownames = TRUE)
@@ -175,11 +185,37 @@ indisp_month_veg <- tibble::rownames_to_column(indisp_month_veg, "sample.id")
 
 
 #merge taxa table with significant indicator species
-indisp_month_veg_taxa <- merge(taxadf, indisp_month_veg, by.y= "sample.id")
+indisp_month_veg_taxa <- merge(OTU_taxa_merge, indisp_month_veg, by.y= "sample.id")
 
 #filter out non significant values
 library(dplyr)
 indisp_month_veg_taxa <- indisp_month_veg_taxa %>%
 filter(indisp_month_veg_taxa$p.value < .05) 
+```
+
+```{r}
+#make new phyloseq object with only indicator species
+
+tax_veg = indisp_veg_taxa[,c(1, 136:139)]
+
+tax_veg <- tax_veg %>%
+    tibble::column_to_rownames("sample.id")
+
+tax_veg <- as.matrix(tax_veg)
+
+otu_veg = indisp_veg_taxa[,c(1:135)]
+
+otu_veg <- otu_veg %>%
+    tibble::column_to_rownames("sample.id")
+
+sam = mapping_file
+
+
+  OTU = otu_table(otu_veg, taxa_are_rows = TRUE)
+  TAX = tax_table(tax_veg)
+  samples = sample_data(sam)
+
+indic_veg_phylo <- phyloseq(OTU, TAX, samples)
+
 ```
 
