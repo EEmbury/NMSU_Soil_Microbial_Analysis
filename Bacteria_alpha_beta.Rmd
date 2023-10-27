@@ -46,6 +46,13 @@ biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.bi
 
 mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
 
+mapping_file$Vegetation <- factor(mapping_file$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+mapping_file$Month <- factor(mapping_file$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+mapping_file$month_veg = paste(mapping_file$Month, mapping_file$Vegetation, sep="-")
 
 
 # Merge the OTU and mapping data into a phyloseq object
@@ -96,7 +103,7 @@ richness <- estimate_richness(rare)
 anova.sh.veg = aov(richness$Shannon ~ sample_data(rare)$vegetation*sample_data(rare)$month)
 summary(anova.sh.veg)
 
-#check anova assumptions
+
 #check anova assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
 qqnorm(anova.sh.veg$residuals) #normal q-q plot, tests normality
@@ -105,6 +112,8 @@ plot(anova.sh.veg$fitted.values, anova.sh.veg$residuals, main = "Residuals vs Fi
      ylab = "Residuals") #residuals vs. fitted, test variance
 abline(h=0, col = "red") 
 
+
+#post hoc
 tukey.sh <- TukeyHSD(anova.sh.veg)
 
 alpha_veg_sh <- plot_richness(rare, x = "vegetation", measures = c("Shannon"))
@@ -151,12 +160,19 @@ ordBC <- ordinate(rare, method = "NMDS", distance = DistBC)
 
 
 #plot distances
-plot_ordination(rare, ordBC, color = "vegetation") + 
-  geom_point(size = 3, aes(shape = month)) +
-  ggtitle("NMDS: Bray-Curtis")+
+p <- plot_ordination(rare, ordBC, color = "Vegetation") + 
+  geom_point(size = 3, aes(shape = Month)) +
+  ggtitle("Bacterial Community Composition Across Vegetation Types")+
+    theme_linedraw()+
   stat_ellipse()+
-  scale_color_manual(values=c("Mesquite" ="#c1292e", "Mesquite_grass" = "#e1bc29", "Grass" = "#679436", name = "vegetation"))
+  scale_color_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))+
+  scale_shape_discrete(name="Month")+
+  theme( text = element_text(size = 12, face = "bold"))
 
+p
+
+#library(svglite)
+#ggsave(file="beta.svg", plot=p, width=7, height=7)
 
 ```
 
