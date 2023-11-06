@@ -1,7 +1,7 @@
 ---
 title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
 **</span>'
-subtitle: '<span style = ''font-size:12pt;''> Bacteria Alpha and Beta Diversity
+subtitle: '<span style = ''font-size:12pt;''> Fungi Alpha and Beta Diversity
 </span>'
 author: "Emily Embury"
 date: "`r Sys.Date()`"
@@ -47,12 +47,12 @@ library(tidyverse)
 library(vegan)
 
 
-load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_dada2_data.RData") 
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungi_dada2_data.RData") 
 #contains taxa and otu table
 
 
 #import metadata
-sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Bacteria/dada2_files/nov_2_metadata.csv", header = TRUE) 
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_oct_28_metadata.csv", header = TRUE) 
 rownames(sam) <- sam$sample.id
 
 #add month_veg row to data
@@ -86,23 +86,15 @@ colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","G
 ```{r decontam}
 library(decontam)
 
-# threshold 0.5, identifies 6 contaminants
+# threshold 0.5, identifies 0 contaminants
 contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
 table(contamdf.prev05$contaminant)
 
-#prune the contaminated taxa
-phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
-phylo_rm_contaminat #after
 
 #remove any left over controls so they don't impact rarefy
 #remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
-phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 129 & sample.id != 93)
+phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id != "ControlL2")
 
-
-## remove unknowns and archaea, keep only bacteria
-bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "Bacteria")
-phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
-phylo_rm_archaea 
 
 ```
 
@@ -119,7 +111,7 @@ phylo_rm_archaea
 ```{r rarefy}
 
 # Extract abundance matrix from the phyloseq object
-OTU1 = as(otu_table(phylo_rm_archaea), "matrix")
+OTU1 = as(otu_table(phylo_rm_cntrl), "matrix")
 # Coerce to data.frame
 OTUdf = as.data.frame(OTU1)
 
@@ -128,7 +120,7 @@ OTUdf = as.data.frame(OTU1)
 #view rarefication plot to determine depth to rarefy at
 #rarecurve(OTUdf, step = 100, cex = 0.75, las = 1) 
 
-depths <- as.data.frame(sample_sums(phylo_rm_archaea))
+depths <- as.data.frame(sample_sums(phylo_rm_cntrl))
 # lowest depth is 17574
 
 rare <- rrarefy(OTUdf, 17574)

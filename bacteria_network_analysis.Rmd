@@ -1,0 +1,253 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Bacteria Co-occurence network
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r}
+library(phyloseq)
+
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+rank_names(phylo_raw)
+
+```
+# **remove controls + contaminants**
+
+```{r}
+library(decontam)
+
+# threshold 0.5, identifies 9 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+#prune the contaminated taxa
+phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+phylo_rm_contaminat #after
+
+#remove any left over controls so they dont impact normalization
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+
+
+## remove unknowns and archaea, keep only bacteria
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
+```
+
+# **build network from phyloseq object**
+- https://github.com/zdk123/SpiecEasi
+- https://psbweb05.psb.ugent.be/conet/microbialnetworks/spieceasi.php
+
+- https://rdrr.io/github/taowenmicro/ggClusterNet/man/corMicro.html (ggClusterNet)
+
+
+**this** paper has code availability https://doi.org/10.1038/s41522-021-00263-y
+          https://github.com/bing-g/AD-BW-network/blob/main/code-co-occurrence-network.R 
+          
+
+***this** paper also has code availability https://doi.org/10.1002/imt2.71 (much better detail will follow this)
+
+
+
+
+#**Generate Network**
+
+https://chiliubio.oschina.io/microeco_tutorial/model-based-class.html#other-functions : 
+SPIEC-EASI (SParse InversE Covariance Estimation for Ecological Association Inference) approach of SpiecEasi R package (Kurtz et al. 2015) has two network construction approaches based on graph model, which relies on algorithms for sparse neighborhood and inverse covariance selection. See https://github.com/zdk123/SpiecEasi for the package installation. It is very slow for SpiecEasi_method = ‘glasso’ when there is a large number (such as hundreds to thousands) according to our test experience.
+
+
+SpiecEasi: https://github.com/zdk123/SpiecEasi
+```{r}
+library(SpiecEasi)
+library(file2meco)
+library(mia)
+library(dplyr)
+library(microeco)
+library(magrittr)
+
+#subset to grass
+grass_ps <- subset_samples(phylo_rm_archaea, vegetation=="Grass")
+#subset to grass_mesquite
+grass_mesquite_ps <- subset_samples(phylo_rm_archaea, vegetation=="Mesquite_grass")
+#subset to mesquite
+mesquite_ps <- subset_samples(phylo_rm_archaea, vegetation=="Mesquite")
+
+######## Grass #########
+phylo_grass <- file2meco::phyloseq2meco(grass_ps)
+
+t1 <- trans_network$new(dataset = phylo_grass, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+
+t1$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+
+t1$cal_module(method = "cluster_fast_greedy")
+
+#t1$save_network(filepath = "network_grass.gexf")
+
+# calculate network attributes
+t1$cal_network_attr()
+#t1$res_network_attr
+
+
+# get node properties
+t1$get_node_table(node_roles = TRUE)
+#t1$res_node_table
+
+
+# get edge properties
+t1$get_edge_table()
+#t1$res_edge_table 
+
+t1$get_adjacency_matrix()
+#t1$res_adjacency_matrix
+
+t1$plot_taxa_roles(use_type = 1)
+
+
+# plot node roles with phylum information
+t1$plot_taxa_roles(use_type = 2)
+
+t1$cal_eigen()
+
+
+library(chorddiag)
+
+t1$cal_sum_links(taxa_level = "Order")
+t1_plot <- t1$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+
+
+
+######## Grass-mesquite #########
+phylo_grass_mesquite <- file2meco::phyloseq2meco(grass_mesquite_ps)
+
+t2 <- trans_network$new(dataset = phylo_grass_mesquite, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+
+t2$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+
+t2$cal_module(method = "cluster_fast_greedy")
+
+#t2$save_network(filepath = "network_mg.gexf")
+
+# calculate network attributes
+t2$cal_network_attr()
+#t1$res_network_attr
+
+
+# get node properties
+t2$get_node_table(node_roles = TRUE)
+#t1$res_node_table
+
+
+# get edge properties
+t2$get_edge_table()
+#t1$res_edge_table 
+
+t2$get_adjacency_matrix()
+#t1$res_adjacency_matrix
+
+t2$plot_taxa_roles(use_type = 1)
+
+
+# plot node roles with phylum information
+t2$plot_taxa_roles(use_type = 2)
+
+t2$cal_eigen()
+
+
+library(chorddiag)
+
+t2$cal_sum_links(taxa_level = "Order")
+t2_plot <-t2$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+
+
+
+
+######## mesquite #########
+phylo_mesquite <- file2meco::phyloseq2meco(mesquite_ps)
+
+t3 <- trans_network$new(dataset = phylo_mesquite, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+
+t3$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+
+t3$cal_module(method = "cluster_fast_greedy")
+
+#t3$save_network(filepath = "network_mesquite.gexf")
+
+# calculate network attributes
+t3$cal_network_attr()
+#t1$res_network_attr
+
+
+# get node properties
+t3$get_node_table(node_roles = TRUE)
+#t1$res_node_table
+
+
+# get edge properties
+t3$get_edge_table()
+#t1$res_edge_table 
+
+t3$get_adjacency_matrix()
+#t1$res_adjacency_matrix
+
+t3$plot_taxa_roles(use_type = 1)
+
+
+# plot node roles with phylum information
+t3$plot_taxa_roles(use_type = 2)
+
+t3$cal_eigen()
+
+
+library(chorddiag)
+
+t3$cal_sum_links(taxa_level = "Order")
+t3_plot <- t3$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+
+
+t1_plot
+t2_plot
+t3_plot
+```

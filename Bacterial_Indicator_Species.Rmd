@@ -40,24 +40,52 @@ knitr::opts_chunk$set(
   - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
 
 ```{r import_data}
+
 library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
 
-biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
 
-mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_dada2_data.RData") 
+#contains taxa and otu table
 
 
-# Merge the OTU and mapping data into a phyloseq object
-phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Bacteria/dada2_files/nov_2_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
 #Add names to biom table and check phyloseq objects
 colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
 ```
 # **remove controls + contaminants**
 
-```{r clean_data}
+```{r decontam}
 library(decontam)
 
-# threshold 0.5, identifies 9 contaminants
+# threshold 0.5, identifies 6 contaminants
 contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
 table(contamdf.prev05$contaminant)
 
@@ -65,23 +93,32 @@ table(contamdf.prev05$contaminant)
 phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
 phylo_rm_contaminat #after
 
-#remove any left over controls so they dont impact normalization
-phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+#remove any left over controls 
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 129)
 
 
 ## remove unknowns and archaea, keep only bacteria
-bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "Bacteria")
 phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
+phylo_rm_archaea 
 
+#get relative abundance
+library(microbiome)
+phylo_rm_archaea <- phylo_rm_archaea %>% 
+          microbiome::transform(transform = "compositional")
 ```
+
 #**Isolate ASV table from phyloseq**
 ```{r}
 library(tibble)
 library(dplyr)
+library(phylosmith)
 
-#relative abundance
-phylo_rm_archaea  = transform_sample_counts(phylo_rm_archaea, function(x) x / sum(x) )
-phylo_rm_archaea = filter_taxa(phylo_rm_archaea, function(x) sd(x)/mean(x) > 3.0, TRUE)
+# Morrison 2019 "We also used Indicator Species Analysis (ISA; De Cáceres and Legendre, 2009; De Cáceres et al., 2010) to test for fungal OTUs with ≥25% frequency that had large positive or negative responses to warming in frequency and relative abundance"
+
+# filter taxa to ≥25% frequency
+phylo_rm_archaea <- taxa_filter(phylo_rm_archaea, treatment = NULL, subset = NULL,
+frequency = 0.25, below = FALSE, drop_samples = TRUE)
 
 # Extract abundance matrix from the phyloseq object
 OTU1 = as(otu_table(phylo_rm_archaea), "matrix")
@@ -99,13 +136,9 @@ taxadf <- tibble::rownames_to_column(taxadf, "sample.id")
 
 # transpose 
 
-
 #add metadata to OTU table
-metadata <- read.csv("Bacteria/CORRECTED_metadata.csv")
-metadata$month_veg = paste(metadata$month, metadata$megetation, sep="-")
-
 OTUdf2 <- tibble::rownames_to_column(OTUdf, "sample.id")
-OTUdf_merge <- merge(metadata, OTUdf2, by.y= "sample.id")
+OTUdf_merge <- merge(sam, OTUdf2, by.y= "sample.id")
 
 
 #merge taxa table with otu table
@@ -117,11 +150,49 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 ```
 
 
+```{r}
+library(indicspecies)
+options(max.print=1000000)
+
+# month-vegetation
+bac.ISA <- multipatt(x = OTUdf,
+OTUdf_merge$month_veg,
+func = "r.g", 
+control = how(nperm=999))
+
+summary(bac.ISA)
+
+
+# vegetation
+bac.ISA.veg <- multipatt(x = OTUdf,
+OTUdf_merge$Vegetation,
+func = "r.g", 
+control = how(nperm=999))
+
+summary(bac.ISA.veg)
+
+
+# month
+bac.ISA.month <- multipatt(x = OTUdf,
+OTUdf_merge$Month,
+func = "r.g", 
+control = how(nperm=999))
+
+summary(bac.ISA.month)
+
+```
+
 - https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/isa/
 - https://cran.r-project.org/web/packages/indicspecies/vignettes/IndicatorSpeciesAnalysis.html#additional-functions-to-estimate-and-test-the-association-between-species-and-groups-of-sites 
 
+
+
+
+- Morrison 2019 " We also used Indicator Species Analysis (ISA; De Cáceres and Legendre, 2009; De Cáceres et al., 2010) to test for fungal OTUs with ≥25% frequency that had large positive or negative responses to warming in frequency and relative abundance"
+
 ```{r}
 library(indicspecies)
+
 
 ##### indicator species grouped by vegetation ####
 
@@ -152,7 +223,7 @@ bac.month.ISA <- multipatt(x = OTUdf,
 cluster = OTUdf_merge$month,
 duleg = TRUE, control = how(nperm=999))
 
-summary(bac.month.ISA)
+#summary(bac.month.ISA)
 
 
 #convert to data frame with sample id column
@@ -176,7 +247,7 @@ bac.month.veg.ISA <- multipatt(x = OTUdf,
 cluster = OTUdf_merge$month_veg,
 duleg = TRUE, control = how(nperm=999))
 
-summary(bac.month.veg.ISA)
+#summary(bac.month.veg.ISA)
 
 
 #filter out non significant values
@@ -192,30 +263,3 @@ library(dplyr)
 indisp_month_veg_taxa <- indisp_month_veg_taxa %>%
 filter(indisp_month_veg_taxa$p.value < .05) 
 ```
-
-```{r}
-#make new phyloseq object with only indicator species
-
-tax_veg = indisp_veg_taxa[,c(1, 136:139)]
-
-tax_veg <- tax_veg %>%
-    tibble::column_to_rownames("sample.id")
-
-tax_veg <- as.matrix(tax_veg)
-
-otu_veg = indisp_veg_taxa[,c(1:135)]
-
-otu_veg <- otu_veg %>%
-    tibble::column_to_rownames("sample.id")
-
-sam = mapping_file
-
-
-  OTU = otu_table(otu_veg, taxa_are_rows = TRUE)
-  TAX = tax_table(tax_veg)
-  samples = sample_data(sam)
-
-indic_veg_phylo <- phyloseq(OTU, TAX, samples)
-
-```
-

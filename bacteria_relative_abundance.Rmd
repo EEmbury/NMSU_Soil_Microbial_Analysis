@@ -40,9 +40,16 @@ knitr::opts_chunk$set(
   - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
 
 ```{r}
+
 library(phyloseq)
 
-biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_nov_1.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+otu <- otu_table(biom_data_raw)
+otu <- as.data.frame(otu)
+otu <- t(otu)
+
+write.csv(otu, "otu.csv")
 
 mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
 
@@ -72,11 +79,27 @@ phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != 
 bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
 phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
 ```
+```{r order_abund_plot}
+
+library(microbiomeutilities)
+library(DT)
+library(dplyr)
+library(microbiome)
+library(scales)
+
+phy2 <- phylo_rm_archaea %>% aggregate_top_taxa2(level = "Order", top = 10) %>%
+          microbiome::transform(transform = "compositional")
+
+phy2
+
+plot_bar(phy2, x="vegetation", fill="Order")  +
+  geom_bar(aes(color=Order, fill=Order), stat="identity", position="stack")
+```
 
 #**Dominant taxa data table**
 - microbiomeutilities package
 - https://microsud.github.io/microbiomeutilities/articles/microbiomeutilities.html 
-```{r}
+```{r order_tabel}
 
 library(microbiomeutilities)
 library(DT)

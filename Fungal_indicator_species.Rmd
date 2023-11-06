@@ -1,0 +1,203 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Fungal Indicator Species
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 15pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 6,
+  fig.width = 9,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Import formatted data**
+
+```{r import_data}
+
+library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
+
+
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungi_dada2_data.RData") 
+#contains taxa and otu table
+
+
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_oct_28_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+
+```{r decontam}
+library(decontam)
+
+# threshold 0.5, identifies 0 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+
+#remove any left over controls so they don't impact rarefy
+#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
+phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id != "ControlL2")
+
+# #get relative abundance
+ library(microbiome)
+ phylo_rm_cntrl <- phylo_rm_cntrl %>% 
+        microbiome::transform(transform = "compositional")
+```
+
+#**Isolate ASV table from phyloseq**
+```{r prep_data}
+library(tibble)
+library(dplyr)
+library(phylosmith)
+
+# Morrison 2019 "We also used Indicator Species Analysis (ISA; De Cáceres and Legendre, 2009; De Cáceres et al., 2010) to test for fungal OTUs with ≥25% frequency that had large positive or negative responses to warming in frequency and relative abundance"
+
+# filter taxa to ≥25% frequency
+phylo_rm_archaea <- taxa_filter(phylo_rm_cntrl, treatment = NULL, subset = NULL,
+frequency = 0.25, below = FALSE, drop_samples = TRUE)
+
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(phylo_rm_cntrl), "matrix")
+# transpose if necessary
+if(taxa_are_rows(phylo_rm_cntrl)){OTU1 <- t(OTU1)}
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+
+
+
+#extract taxa table
+taxa = as(tax_table(phylo_rm_cntrl), "matrix")
+taxadf = as.data.frame(taxa)
+taxadf <- tibble::rownames_to_column(taxadf, "sample.id")
+
+# transpose 
+
+#add metadata to OTU table
+OTUdf2 <- tibble::rownames_to_column(OTUdf, "sample.id")
+OTUdf_merge <- merge(sam, OTUdf2, by.y= "sample.id")
+
+
+#merge taxa table with otu table
+OTU1 = as(otu_table(phylo_rm_cntrl), "matrix")
+OTU1 = as.data.frame(OTU1)
+OTU1 <- tibble::rownames_to_column(OTU1, "sample.id")
+
+OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
+```
+
+
+#**indicator species analysis**
+
+ - the function "indicators" can be restrained by setting values for "a" and "b"
+ - info from: https://cran.r-project.org/web/packages/indicspecies/vignettes/IndicatorSpeciesAnalysis.html#the-function-indicators 
+    - *"Component ‘A’ is sample estimate of the probability that the surveyed site belongs to the target site group given the fact that the species has been found. This conditional probability is called the specificity or positive predictive value of the species as indicator of the site group."*
+    - *"Component ‘B’ is sample estimate of the probability of finding the species in sites belonging to the site group. This second conditional probability is called the fidelity or sensitivity of the species as indicator of the target site group."*
+    
+    - interpretation example:
+      - *"indicator of Group 1 because it occurs in sites belonging to this group only (i.e., A = 1.0000), although not all sites belonging to Group 1 include the species (i.e., B = 0.8235)."*
+      - *"...indicate Group 3 because it appears in all sites belonging to this group (i.e., B = 1.0000) and it is largely (but not completely) restricted to it (i.e., A = 0.8278)."*
+```{r isa}
+library(indicspecies)
+options(max.print=1000000)
+
+# vegetation
+sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
+                 max.order = 2, 
+                 At=1, Bt=0.6)
+print(sc_g)
+
+#sc2_g <- pruneindicators(sc_g, At=1, Bt=0.8, verbose=TRUE)
+#print(sc2_g)
+
+
+sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
+                 max.order = 2, 
+                 At=1, Bt=0.7)
+print(sc_m)
+
+sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
+                 max.order = 2, 
+                 At=1, Bt=0.65)
+print(sc_mg)
+
+# vegetation
+fun.ISA.veg <- multipatt(x = OTUdf,
+OTUdf_merge$Vegetation,
+func = "IndVal.g", 
+control = how(nperm=999), duleg = TRUE)
+
+summary(fun.ISA.veg)
+
+
+# month
+fun.ISA.month <- multipatt(x = OTUdf,
+OTUdf_merge$Month,
+func = "IndVal.g", 
+control = how(nperm=999), duleg = TRUE)
+
+summary(fun.ISA.month)
+
+# month-vegetation
+fun.ISA <- multipatt(x = OTUdf,
+OTUdf_merge$month_veg,
+func = "IndVal.g", 
+control = how(nperm=999), duleg = TRUE)
+
+summary(fun.ISA)
+
+```

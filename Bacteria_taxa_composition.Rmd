@@ -81,7 +81,7 @@ rel_abund  = transform_sample_counts(phylo_rm_contaminat_rm_cntrl, function(x) x
 
 # plot one of the key phyla from the differential abundance analysis
 
-gpsfb = subset_taxa(rel_abund, Phylum=="p__Dependentiae")
+gpsfb = subset_taxa(rel_abund, Phylum=="p__Fibrobacterota")
 
-plot_bar(gpsfb, "vegetation", "Abundance", title = "plot_bar; Dependentiae-only")
+plot_bar(gpsfb, "vegetation", "Abundance", title = "plot_bar; Fibrobacterota-only")
 ```
