@@ -77,6 +77,7 @@ phylo_raw
 
 #Add names to biom table and check phyloseq objects
 colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+
 ```
 
 # **remove controls + contaminants**
@@ -92,6 +93,19 @@ table(contamdf.prev05$contaminant)
 #remove any left over controls so they don't impact rarefy
 #remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
 phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id != "ControlL2")
+
+
+#read in funguild data
+funguild_taxa <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/all_funguild.csv", header = TRUE)
+
+
+#add replace taxa table with FunGuild taxa list
+library(tidyverse)
+funguild_taxa <- funguild_taxa %>% remove_rownames %>% column_to_rownames(var="OTU")
+guild <- tax_table(as.matrix(funguild_taxa))
+
+tax_table(phylo_rm_cntrl) <- guild
+
 ```
 
 
@@ -140,18 +154,8 @@ phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id !
       FUNGuild made assignments on 3257 OTUs.
       
       Result saved to 'FunGuild.guilds.txt'
-      
+
+# **Plot FunGuild**      
 ```{r}
-
-funguild_taxa <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/FunGuild.guilds_matched.csv", header = TRUE)
-
-#merge funguild data with phyloseq
-
-psMelt <- psmelt(phylo_rm_cntrl)
-
-psMelt$OTU_ID <- psMelt$OTU
-
-funguild <- merge(psMelt,funguild_taxa,by="OTU_ID")
-
-
+plot_bar(phylo_rm_cntrl, x = "Vegetation", fill = "Trophic.Mode")
 ```
