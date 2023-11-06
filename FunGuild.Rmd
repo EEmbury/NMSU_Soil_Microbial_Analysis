@@ -157,5 +157,17 @@ tax_table(phylo_rm_cntrl) <- guild
 
 # **Plot FunGuild**      
 ```{r}
-plot_bar(phylo_rm_cntrl, x = "Vegetation", fill = "Trophic.Mode")
+
+#get relative abundance
+phy_rel <- transform_sample_counts(phylo_rm_cntrl, function(x) x/sum(x))
+
+#remove unknowns
+ps.troph <- subset_taxa(phy_rel, Trophic.Mode !="-")
+
+
+p <- plot_bar(ps.troph, x = "Vegetation", fill = "Trophic.Mode") 
+
+p + geom_bar(aes(color=Trophic.Mode, fill=Trophic.Mode), stat="identity", position="stack") +
+  facet_wrap(~Month)
+
 ```
