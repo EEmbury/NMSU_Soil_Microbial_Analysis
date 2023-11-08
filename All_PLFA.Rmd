@@ -188,10 +188,10 @@ T_fun <- dplyr::filter(y.fun, grepl("^.*:T.*:T", label))
 
 # merge fungal data
 fun <- G_fun %>%
-  full_join(M_fun, by = c("label", "diff", "lwr", "upr", "p adj")) 
+  dplyr::full_join(M_fun, by = c("label", "diff", "lwr", "upr", "p adj")) 
 
 fun <- fun %>%
-  full_join(T_fun, by = c("label", "diff", "lwr", "upr", "p adj"))
+  dplyr::full_join(T_fun, by = c("label", "diff", "lwr", "upr", "p adj"))
 
 #filter for significant values
 fun_signif <- fun %>%
@@ -254,10 +254,10 @@ T_bac <- dplyr::filter(y.bac, grepl("^.*:T.*:T", label))
 
 # merge fungal data
 bac <- G_bac %>%
-  full_join(M_bac, by = c("label", "diff", "lwr", "upr", "p adj")) 
+  dplyr::full_join(M_bac, by = c("label", "diff", "lwr", "upr", "p adj")) 
 
 bac <- bac %>%
-  full_join(T_bac, by = c("label", "diff", "lwr", "upr", "p adj"))
+  dplyr::full_join(T_bac, by = c("label", "diff", "lwr", "upr", "p adj"))
 
 #filter for significant values
 bac_signif <- bac %>%
@@ -296,10 +296,10 @@ T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar))
 
 # merge relevant comparisons to one dataframe
 fun_stat <- G_fun_stat %>%
-  full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+  dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 
 fun_stat <- fun_stat %>%
-  full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+  dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 
 # make a column with only Veg_abrev so that this data set matches with the PLFA data
 fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
@@ -366,10 +366,10 @@ T_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:T.*:T", full_compar))
 
 # merge relevant comparisons to one datafram
 bac_stat <- G_bac_stat %>%
-  full_join(M_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+  dplyr::full_join(M_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 
 bac_stat <- bac_stat %>%
-  full_join(T_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+ dplyr:: full_join(T_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 
 # make a column with only Veg_abrev so that this dataset matches with the PLFA data
 bac_stat <- separate(data = bac_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
@@ -420,9 +420,8 @@ final <- annotate_figure(figure,
 
 final
 
-#library(svglite)
-#ggsave(file="PLFA_all_ggarrange.svg", plot=final, width=9, height=9)
-
+library(svglite)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
 ```
 
 ```{r session_info}
