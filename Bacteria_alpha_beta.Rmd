@@ -233,7 +233,7 @@ p
 sampleDF <-  data.frame(sample_data(rare_phylo))
 
 # adonis : Analysis of variance using distance matrices
-adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF)
+adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF, strata = sampleDF$proximity, nperm = 999)
 
 #### significance of vegetation ####
 library(pairwiseAdonis)
