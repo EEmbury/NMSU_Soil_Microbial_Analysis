@@ -239,6 +239,12 @@ adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF, strata = s
 library(pairwiseAdonis)
 pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$Vegetation)
 
+Vegetation = sample_data(rare_phylo)$Vegetation
+proximity1 = sample_data(rare_phylo)$proximity1
+
+pairwise.adonis2(DistBC ~ Vegetation, strata = "proximity1", data= data.frame(sample_data(rare_phylo)))
+
+
 # betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$vegetation)
 anova(beta)
