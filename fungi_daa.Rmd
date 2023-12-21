@@ -135,9 +135,68 @@ output = ancombc2(data = tse, assay_name = "counts", tax_level = "Order",
                                                               byrow = TRUE)),
                                        node = list(2, 2, 1),
                                        solver = "ECOS",
-                                       B = 10))
+                                       B = 100))
 
 ```
+
+```{r}
+#months
+
+set.seed(123)
+# It should be noted that we have set the number of bootstrap samples (B) equal 
+# to 10 in the 'trend_control' function for computational expediency. 
+# However, it is recommended that users utilize the default value of B, 
+# which is 100, or larger values for optimal performance.
+output_month = ancombc2(data = tse, assay_name = "counts", tax_level = "Order",
+                  fix_formula = "month", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "month", struc_zero = TRUE, neg_lb = TRUE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = FALSE,
+                  iter_control = list(tol = 1e-2, max_iter = 20, 
+                                      verbose = TRUE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100))
+
+## From tutorial: "4.3 Structural zeros (taxon presence/absence)"
+tab_zero = output_month$zero_ind
+tab_zero %>%
+    datatable(caption = "The detection of structural zeros")
+
+## From tutorial: "5.5 ANCOM-BC2 multiple pairwise comparisons"
+
+res_pair = output_month$res_pair %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_pair[1:122, ] %>%
+    datatable(caption = "ANCOM-BC2 Multiple Pairwise Comparisons")
+
+## From tutorial: "5.4 ANCOM-BC2 global test"
+res_global = output_month$res_global %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_global[1:6, ] %>%
+    datatable(caption = "ANCOM-BC2 Global Test")
+
+## From tutorial: "5.6 ANCOM-BC2 Dunnett’s type of test"
+res_dunn = output_month$res_dunn %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_dunn[1:122, ] %>%
+    datatable(caption = "ANCOM-BC2 Dunnett's Type of Test")
+
+
+## From tutorial: "6. Bias-corrected log abundances"
+bias_correct_log_table = output_month$bias_correct_log_table
+# By default, ANCOM-BC2 does not add pseudo-counts to zero counts, which can 
+# result in NAs in the bias-corrected log abundances. Users have the option to 
+# either leave the NAs as they are or replace them with zeros. 
+# This replacement is equivalent to adding pseudo-counts of ones to the zero counts. 
+bias_correct_log_table[is.na(bias_correct_log_table)] = 0
+# Show the first 6 samples
+round(bias_correct_log_table[, 1:121], 2) %>% 
+  datatable(caption = "Bias-corrected log abundances")`
+```
+
 
 ```{r visualize_ANCOMBC2}
 
