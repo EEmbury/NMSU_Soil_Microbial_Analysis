@@ -1,0 +1,538 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Fungal Co-occurance Network
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 15pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 6,
+  fig.width = 9,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Import formatted data**
+
+```{r import_data}
+
+library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
+
+
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungi_dada2_data.RData") 
+#contains taxa and otu table
+
+
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_oct_28_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+
+```{r decontam}
+library(decontam)
+
+# threshold 0.5, identifies 0 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+
+#remove any left over controls so they don't impact rarefy
+#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
+phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id != "ControlL2")
+
+```
+
+# **build network from phyloseq object**
+- https://github.com/zdk123/SpiecEasi
+- https://psbweb05.psb.ugent.be/conet/microbialnetworks/spieceasi.php
+
+- https://rdrr.io/github/taowenmicro/ggClusterNet/man/corMicro.html (ggClusterNet)
+
+
+**this** paper has code availability https://doi.org/10.1038/s41522-021-00263-y
+          https://github.com/bing-g/AD-BW-network/blob/main/code-co-occurrence-network.R 
+          
+
+***this** paper also has code availability https://doi.org/10.1002/imt2.71 (much better detail will follow this)
+
+
+
+
+#**Generate Network**
+
+https://chiliubio.oschina.io/microeco_tutorial/model-based-class.html#other-functions : 
+SPIEC-EASI (SParse InversE Covariance Estimation for Ecological Association Inference) approach of SpiecEasi R package (Kurtz et al. 2015) has two network construction approaches based on graph model, which relies on algorithms for sparse neighborhood and inverse covariance selection. See https://github.com/zdk123/SpiecEasi for the package installation. It is very slow for SpiecEasi_method = ‘glasso’ when there is a large number (such as hundreds to thousands) according to our test experience.
+
+
+SpiecEasi: https://github.com/zdk123/SpiecEasi
+
+#protocol forSpiecEasi  https://experiments.springernature.com/articles/10.1007/978-1-0716-1040-4_14
+
+
+- *"The function cal_sum_links can sum the links (edge) number from one taxa to another or within the same taxa. The function plot_sum_links is used to show the result from the function cal_sum_links. This is very useful to fast see how many nodes are connected between different taxa or within one taxa. In terms of ‘Phylum’ level in the tutorial, the function cal_sum_links() sum the linkages number from one Phylum to another Phylum or the linkages in the same Phylum. So the numbers along the outside of the circular plot represent how many edges or linkages are related with the Phylum. For example, in terms of Proteobacteria, there are roughly total 900 edges associated with the OTUs in Proteobacteria, in which roughly 200 edges connect both OTUs in Proteobacteria and roughly 150 edges connect the OTUs from Proteobacteria with the OTUs from Chloroflexi."* -- https://chiliubio.github.io/microeco_tutorial/model-based-class.html 
+```{r}
+# library(SpiecEasi)
+# library(file2meco)
+# library(mia)
+# library(dplyr)
+# library(microeco)
+# library(magrittr)
+# 
+# #subset to grass
+# grass_ps <- subset_samples(phylo_rm_cntrl, vegetation=="Grass")
+# #subset to grass_mesquite
+# grass_mesquite_ps <- subset_samples(phylo_rm_cntrl, vegetation=="Mesquite_grass")
+# #subset to mesquite
+# mesquite_ps <- subset_samples(phylo_rm_cntrl, vegetation=="Mesquite")
+# 
+# ######## Grass #########
+# phylo_grass <- file2meco::phyloseq2meco(grass_ps)
+# 
+# t1 <- trans_network$new(dataset = phylo_grass, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+# 
+# t1$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+# 
+# t1$cal_module(method = "cluster_fast_greedy")
+# 
+# #t1$save_network(filepath = "network_grass.gexf")
+# 
+# # calculate network attributes
+# t1$cal_network_attr()
+# t1$res_network_attr
+# 
+# 
+# # get node properties
+# t1$get_node_table(node_roles = TRUE)
+# t1$res_node_table
+# 
+# 
+# # get edge properties
+# t1$get_edge_table()
+# t1$res_edge_table 
+# 
+# t1$get_adjacency_matrix()
+# t1$res_adjacency_matrix
+# 
+# t1$plot_taxa_roles(use_type = 1)
+# 
+# 
+# # plot node roles with phylum information
+# t1$plot_taxa_roles(use_type = 2)
+# 
+# t1$cal_eigen()
+# 
+# 
+# library(chorddiag)
+# 
+# t1$cal_sum_links(taxa_level = "Order")
+# t1_plot <- t1$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+# 
+# 
+# 
+# ######## Grass-mesquite #########
+# phylo_grass_mesquite <- file2meco::phyloseq2meco(grass_mesquite_ps)
+# 
+# t2 <- trans_network$new(dataset = phylo_grass_mesquite, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+# 
+# t2$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+# 
+# t2$cal_module(method = "cluster_fast_greedy")
+# 
+# #t2$save_network(filepath = "network_mg.gexf")
+# 
+# # calculate network attributes
+# t2$cal_network_attr()
+# t2$res_network_attr
+# 
+# 
+# # get node properties
+# t2$get_node_table(node_roles = TRUE)
+# t2$res_node_table
+# 
+# 
+# # get edge properties
+# t2$get_edge_table()
+# t2$res_edge_table 
+# 
+# t2$get_adjacency_matrix()
+# t2$res_adjacency_matrix
+# 
+# t2$plot_taxa_roles(use_type = 1)
+# 
+# 
+# # plot node roles with phylum information
+# t2$plot_taxa_roles(use_type = 2)
+# 
+# t2$cal_eigen()
+# 
+# 
+# library(chorddiag)
+# 
+# t2$cal_sum_links(taxa_level = "Order")
+# t2_plot <-t2$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+# 
+# 
+# 
+# 
+# ######## mesquite #########
+# phylo_mesquite <- file2meco::phyloseq2meco(mesquite_ps)
+# 
+# t3 <- trans_network$new(dataset = phylo_mesquite, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+# 
+# t3$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+# 
+# t3$cal_module(method = "cluster_fast_greedy")
+# 
+# #t3$save_network(filepath = "network_mesquite.gexf")
+# 
+# # calculate network attributes
+# t3$cal_network_attr()
+# t3$res_network_attr
+# 
+# # get node properties
+# t3$get_node_table(node_roles = TRUE)
+# t3$res_node_table
+# 
+# # get edge properties
+# t3$get_edge_table()
+# t3$res_edge_table 
+# 
+# t3$get_adjacency_matrix()
+# t3$res_adjacency_matrix
+# 
+# t3$plot_taxa_roles(use_type = 1)
+# 
+# 
+# # plot node roles with phylum information
+# t3$plot_taxa_roles(use_type = 2)
+# 
+# t3$cal_eigen()
+# 
+# 
+# library(chorddiag)
+# 
+# t3$cal_sum_links(taxa_level = "Order")
+# t3_plot <- t3$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+# 
+# 
+# t1_plot
+# t2_plot
+# t3_plot
+```
+
+
+# https://github.com/stefpeschel/NetCoMi
+```{r}
+
+library(NetCoMi)
+
+
+grass <- phyloseq::subset_samples(phylo_rm_cntrl, Vegetation == "Grass")
+mesquite  <- phyloseq::subset_samples(phylo_rm_cntrl, Vegetation == "Mesquite")
+grass_mesquite <- phyloseq::subset_samples(phylo_rm_cntrl, Vegetation == "Grass-Mesquite")
+
+
+### Grass to Mesquite ###
+g_m <- netConstruct(grass, mesquite,
+                           filtTax = "highestFreq",
+                           filtTaxPar = list(highestFreq = 750),
+                           zeroMethod = "pseudo",
+                           normMethod = "clr",
+                           measure = "pearson",
+                           verbose = 2)
+
+g_m1 <- netAnalyze(g_m, clustMethod = "cluster_fast_greedy")
+
+nclust_g_m <- as.numeric(max(names(table(g_m1$clustering$clust1))))
+
+col <- c(topo.colors(nclust_g_m ), rainbow(37))
+
+diff_season_g_m <- diffnet(g_m ,
+                       diffMethod = "fisherTest",
+                       adjust = "bonferroni")
+
+# Identify the differentially associated OTUs
+diffmat_sums_g_m <- rowSums(diff_season_g_m $diffAdjustMat)
+diff_asso_names_g_m <- names(diffmat_sums_g_m[diffmat_sums_g_m > 0])
+
+
+plot(g_m1, 
+      nodeFilter = "names",
+     nodeFilterPar = diff_asso_names_g_m,
+     sameLayout = TRUE, 
+     layoutGroup = "union", 
+     colorVec = col,
+     borderCol = "gray40", 
+     nodeSize = "degree", 
+     cexNodes = 0.9, 
+     nodeSizeSpread = 3, 
+     edgeTranspLow = 0, 
+     edgeTranspHigh = 5,
+     groupNames = c("Grass", "Mesquite"), 
+     showTitle = TRUE, 
+     layout = "circle",
+     cexTitle = 1.8,
+     mar = c(1,1,3,1), 
+     repulsion = 0.9, 
+     labels = TRUE, 
+     rmSingles = "inboth",
+     nodeTransp = 50, 
+     hubTransp = 30)
+
+
+# Differential network plot
+
+plot(diff_season_g_m, 
+     cexNodes = 0.8, 
+     cexLegend = 0.8,
+     layout = "circle",
+     edgeCol = c("#8fe388", "#d00000",  "#ffba08"  , "#ff7b9c", "#3185fc",  "#a68fdd",  "#1b998b",  "#ff9b85",  "grey"),
+     cexLabels = 1.5,
+     legend = FALSE,
+     cexTitle = 1,
+     title = "Differential Network: Grass versus Mesquite",
+     mar = c(4,2,3,2)); legend("bottom", legend = c("G + / M +",
+                            "G + / M -",
+                            "G - / M +"), 
+            col = c("#8fe388", "#ffba08", "#ff7b9c"), xpd=TRUE, inset = 0.02, lty = 1, lwd = 4, cex =
+              0.7, horiz = TRUE)
+
+
+
+### Grass to Grass-Mesquite ###
+g_gm <- netConstruct(grass, grass_mesquite,
+                           filtTax = "highestFreq",
+                           filtTaxPar = list(highestFreq = 750),
+                           zeroMethod = "pseudo",
+                           normMethod = "clr",
+                           measure = "pearson",
+                           verbose = 2)
+
+g_gm1 <- netAnalyze(g_gm , clustMethod = "cluster_fast_greedy")
+
+nclust_g_gm1 <- as.numeric(max(names(table(g_gm1$clustering$clust1))))
+
+col <- c(topo.colors(nclust_g_gm1), rainbow(37))
+
+diff_season_g_gm <- diffnet(g_gm,
+                       diffMethod = "fisherTest",
+                       adjust = "bonferroni")
+
+# Identify the differentially associated OTUs
+diffmat_sums_g_gm <- rowSums(diff_season_g_gm$diffAdjustMat)
+diff_asso_names_diffmat_sums_g_gm <- names(diffmat_sums_g_gm[diffmat_sums_g_gm > 0])
+
+
+plot(g_gm1, 
+      nodeFilter = "names",
+     nodeFilterPar = diff_asso_names_diffmat_sums_g_gm,
+     sameLayout = TRUE, 
+     layoutGroup = "union", 
+     colorVec = col,
+     borderCol = "gray40", 
+     layout = "circle",
+     nodeSize = "degree", 
+     cexNodes = 0.9, 
+     nodeSizeSpread = 3, 
+     edgeTranspLow = 0, 
+     edgeTranspHigh = 5,
+     groupNames = c("Grass", "Grass-Mesquite"), 
+     showTitle = TRUE, 
+     cexTitle = 1.8,
+     mar = c(1,1,3,1), 
+     repulsion = 0.9, 
+     labels = TRUE, 
+     rmSingles = "inboth",
+     nodeTransp = 50, 
+     hubTransp = 30)
+
+
+# Differential network plot
+plot(diff_season_g_gm, 
+     cexNodes = 0.8, 
+     cexLegend = 0.8,
+     layout = "circle",
+     edgeCol = c("#8fe388", "#d00000",  "#ffba08"  , "#ff7b9c", "#3185fc",  "#a68fdd",  "#1b998b",  "#ff9b85",  "grey"),
+     cexLabels = 1.5,
+     legend = FALSE,
+     cexTitle = 1,
+     title = "Differential Network: Grass versus Grass-Mesquite",
+     mar = c(4,2,3,2)) ; legend("bottom", legend = c("G + / MG +",
+                            "G + / MG -",
+                            "G - / MG +"), 
+                            col = c("#8fe388", "#ffba08", "#ff7b9c"), xpd=TRUE, inset = 0.02, lty =
+                              1, lwd = 4, cex = 0.7, horiz = TRUE)
+
+
+### Mesquite to Grass-Mesquite ###
+m_mg <- netConstruct(mesquite, grass_mesquite,
+                           filtTax = "highestFreq",
+                           filtTaxPar = list(highestFreq = 750),
+                           zeroMethod = "pseudo",
+                           normMethod = "clr",
+                           measure = "pearson",
+                           verbose = 2)
+
+m_mg1 <- netAnalyze(m_mg, clustMethod = "cluster_fast_greedy")
+
+nclust_m_mg1 <- as.numeric(max(names(table(m_mg1$clustering$clust1))))
+
+col <- c(topo.colors(nclust_m_mg1), rainbow(37))
+
+diff_season_m_mg <- diffnet(m_mg,
+                       diffMethod = "fisherTest",
+                       adjust = "bonferroni")
+
+# Identify the differentially associated OTUs
+diffmat_sums_m_mg <- rowSums(diff_season_m_mg$diffAdjustMat)
+diff_asso_names_m_mg <- names(diffmat_sums_m_mg[diffmat_sums_m_mg > 0])
+
+
+plot(m_mg1, 
+      nodeFilter = "names",
+     nodeFilterPar = diff_asso_names_m_mg ,
+     sameLayout = TRUE, 
+     layoutGroup = "union", 
+     layout = "circle",
+     colorVec = col,
+     borderCol = "gray40", 
+     nodeSize = "degree", 
+     cexNodes = 0.9, 
+     nodeSizeSpread = 3, 
+     edgeTranspLow = 0, 
+     edgeTranspHigh = 5,
+     groupNames = c("Mesquite", "Grass-Mesquite"), 
+     showTitle = TRUE, 
+     cexTitle = 1.8,
+     mar = c(1,1,3,1), 
+     repulsion = 0.9, 
+     labels = TRUE, 
+     rmSingles = "inboth",
+     nodeTransp = 50, 
+     hubTransp = 30)
+
+
+# Differential network plot
+
+
+plot(diff_season_m_mg, 
+     cexNodes = 0.8, 
+     cexLegend = 0.8,
+     layout = "circle",
+     edgeCol = c("#8fe388", "#d00000",  "#ffba08"  , "#ff7b9c", "#3185fc",  "#a68fdd",  "#1b998b",  "#ff9b85",  "grey"),
+     cexLabels = 1.5,
+     legend = FALSE,
+     cexTitle = 1,
+     title = "Differential Network: Mesquite versus Grass-Mesquite",
+     mar = c(4,2,3,2));legend("bottom", legend = c("M + / MG +",
+                            "M + / MG -",
+                            "M - / MG +"), 
+                            col = c("#8fe388", "#ffba08", "#ff7b9c"), xpd=TRUE, inset = 0.02, lty =
+                              1, lwd = 4, cex = 0.7, horiz = TRUE)
+```
+
+```{r}
+
+par(mfrow = c(1, 3))
+
+
+plot(diff_season_g_m, 
+     cexNodes = 0.8, 
+     cexLegend = 0.8,
+     layout = "circle",
+     edgeCol = c("#8fe388", "#d00000",  "#ffba08"  , "#ff7b9c", "#3185fc",  "#a68fdd",  "#1b998b",  "#ff9b85",  "grey"),
+     cexLabels = 1.5,
+     legend = FALSE,
+     cexTitle = 1,
+     title = "Differential Network: Grass versus Mesquite",
+     mar = c(4,2,3,2)); legend("bottom", legend = c("G + / M +",
+                            "G + / M -",
+                            "G - / M +"), 
+            col = c("#8fe388", "#ffba08", "#ff7b9c"), xpd=TRUE, inset = 0.02, lty = 1, lwd = 4, cex =
+              0.7, horiz = TRUE)
+
+
+plot(diff_season_g_gm, 
+     cexNodes = 0.8, 
+     cexLegend = 0.8,
+     layout = "circle",
+     edgeCol = c("#8fe388", "#d00000",  "#ffba08"  , "#ff7b9c", "#3185fc",  "#a68fdd",  "#1b998b",  "#ff9b85",  "grey"),
+     cexLabels = 1.5,
+     legend = FALSE,
+     cexTitle = 1,
+     title = "Differential Network: Grass versus Grass-Mesquite",
+     mar = c(4,2,3,2)) ; legend("bottom", legend = c("G + / MG +",
+                            "G + / MG -",
+                            "G - / MG +"), 
+                            col = c("#8fe388", "#ffba08", "#ff7b9c"), xpd=TRUE, inset = 0.02, lty =
+                              1, lwd = 4, cex = 0.7, horiz = TRUE)
+
+plot(diff_season_m_mg, 
+     cexNodes = 0.8, 
+     cexLegend = 0.8,
+     layout = "circle",
+     edgeCol = c("#8fe388", "#d00000",  "#ffba08"  , "#ff7b9c", "#3185fc",  "#a68fdd",  "#1b998b",  "#ff9b85",  "grey"),
+     cexLabels = 1.5,
+     legend = FALSE,
+     cexTitle = 1,
+     title = "Differential Network: Mesquite versus Grass-Mesquite",
+     mar = c(4,2,3,2));legend("bottom", legend = c("M + / MG +",
+                            "M + / MG -",
+                            "M - / MG +"), 
+                            col = c("#8fe388", "#ffba08", "#ff7b9c"), xpd=TRUE, inset = 0.02, lty =
+                              1, lwd = 4, cex = 0.7, horiz = TRUE)
+
+```

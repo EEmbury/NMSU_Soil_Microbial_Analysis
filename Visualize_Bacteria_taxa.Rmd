@@ -1,0 +1,70 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Visualize Bacteria Taxa
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r}
+library(phyloseq)
+
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+
+depths <- sample_sums(phylo_raw)
+
+```
+
+```{r}
+
+library(ggplot2)
+
+rel_abund <- transform_sample_counts(phylo_raw, function(x) x / sum(x) )
+
+p <- plot_bar(rel_abund, "vegetation", fill="Phylum", facet_grid=~month)
+
+p + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="stack")
+
+```

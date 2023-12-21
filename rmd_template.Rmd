@@ -1,0 +1,46 @@
+---
+title: '<span style = ''font-size:14pt;''>**TITLE
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''>TITLE
+</span>'
+author: "NAME"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 5,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **SECTION TITLE HERE**
+
+ENTER TEXT HERE
+
+
+```{r}
+#ENTER CODE HERE
+```
+

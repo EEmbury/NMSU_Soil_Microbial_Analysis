@@ -1,0 +1,87 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Bacteria Taxa Composition
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r}
+library(phyloseq)
+
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_raw.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+
+```{r}
+library(decontam)
+
+# threshold 0.5, identifies 9 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+#prune the contaminated taxa
+phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+phylo_rm_contaminat #after
+
+#remove any left over controls so they dont impact normalization
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+
+## remove unknowns and archaea, leaving only bacteria
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+phylo_rm_contaminat_rm_cntrl<- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl)
+
+```
+
+```{r}
+rel_abund  = transform_sample_counts(phylo_rm_contaminat_rm_cntrl, function(x) x / sum(x) )
+
+# plot one of the key phyla from the differential abundance analysis
+
+gpsfb = subset_taxa(rel_abund, Phylum=="p__Fibrobacterota")
+
+plot_bar(gpsfb, "vegetation", "Abundance", title = "plot_bar; Fibrobacterota-only")
+```

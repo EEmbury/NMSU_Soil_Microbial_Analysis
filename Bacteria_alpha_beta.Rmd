@@ -1,0 +1,295 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Bacteria Alpha and Beta Diversity
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r import_data}
+
+library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
+
+
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_dada2_data.RData") 
+#contains taxa and otu table
+
+
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Bacteria/dada2_files/nov_2_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+
+```{r decontam}
+library(decontam)
+
+# threshold 0.5, identifies 6 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+#prune the contaminated taxa
+phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+phylo_rm_contaminat #after
+
+#remove any left over controls so they don't impact rarefy
+#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 129 & sample.id != 93)
+
+
+## remove unknowns and archaea, keep only bacteria
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "Bacteria")
+phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
+phylo_rm_archaea 
+
+```
+
+
+# **Alpha Diversity**
+  - https://joey711.github.io/phyloseq/plot_richness-examples.html
+  - https://rpubs.com/lconteville/713954 
+
+
+- https://doi.org/10.1016/j.resmic.2018.03.004 states that shannon is the best index to use
+
+- "Simpson’s index (D) Estimator of species richness and species evenness: more weight on species evenness" -- https://doi.org/10.4014/jmb.1709.09027 
+
+```{r rarefy}
+
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(phylo_rm_archaea), "matrix")
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+
+#### rarefy with vegan ####
+
+#view rarefication plot to determine depth to rarefy at
+#rarecurve(OTUdf, step = 100, cex = 0.75, las = 1) 
+
+depths <- as.data.frame(sample_sums(phylo_rm_archaea))
+# lowest depth is 17574
+
+rare <- rrarefy(OTUdf, 17574)
+
+#rebuild phyloseq with new rare otu table
+rare_phylo <- phyloseq(otu_table(rare, taxa_are_rows = FALSE), 
+               sample_data(sam)) 
+     
+```
+
+```{r alpha_Shannon}
+
+richness <- estimate_richness(rare_phylo)
+
+#Shannon
+anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
+summary(anova.sh.veg)
+
+#post hoc
+tukey.sh <- TukeyHSD(anova.sh.veg)
+tukey.sh$`sample_data(rare_phylo)$Month`
+
+
+#check anova assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(anova.sh.veg$residuals) #normal q-q plot, tests normality
+qqline(anova.sh.veg$residuals, col = "red") #line of fit on q-q plot
+plot(anova.sh.veg$fitted.values, anova.sh.veg$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+#normality assumptions don't seem great
+anova.sh.veg.sq = aov(((richness$Shannon)^2) ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
+summary(anova.sh.veg.sq)
+
+#post hoc
+tukey.sh <- TukeyHSD(anova.sh.veg.sq)
+tukey.sh$`sample_data(rare_phylo)$Month`
+
+#check anova assumptions after log transform
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(anova.sh.veg.sq$residuals) #normal q-q plot, tests normality
+qqline(anova.sh.veg.sq$residuals, col = "red") #line of fit on q-q plot
+plot(anova.sh.veg.sq$fitted.values, anova.sh.veg.sq$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+alpha_veg_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
+alpha_veg_sh + geom_boxplot()
+
+alpha_mo_sh <- plot_richness(rare_phylo, x = "Month", measures = c("Shannon"))
+alpha_mo_sh + geom_boxplot()
+
+```
+
+
+
+
+# **Beta Diversity**
+
+- http://evomics.org/wp-content/uploads/2016/01/phyloseq-Lab-01-Answers.html
+- https://www.youtube.com/watch?v=oLf0EpMJ4yA 
+
+- adonis = essentially an ANOVA for distances
+- betadisper = testing for significant different variation
+
+
+- "Furthermore, beta-diversity measures might be chosen to make it easier to assess a specific hypothesis, such as changes in microbiome composition over time. For example, a Bray Curtis distance that uses all the abundance differences may be more sensitive to examine gradients of diversity with location or time" -- https://doi.org/10.1016/j.csbj.2022.04.032 
+
+-  https://doi.org/10.1111/2041-210X.13115 = proportions and rarefy are the best way to normalize for BC distance in community analyses
+
+  
+```{r bray_dist_and_plot}
+
+# calculate Bray-Curtis distance
+DistBC <- phyloseq::distance(rare_phylo, method = "bray")
+
+#ordinate bray distances
+ordBC <- ordinate(rare_phylo, method = "NMDS", distance = DistBC)
+
+
+#plot distances
+p <- plot_ordination(rare_phylo, ordBC, color = "Vegetation") + 
+  geom_point(size = 3, aes(shape = Month)) +
+  ggtitle("Bacterial Community Composition Across Vegetation Types")+
+    theme_linedraw()+
+  stat_ellipse()+
+  scale_color_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))+
+  scale_shape_discrete(name="Month")+
+  theme( text = element_text(size = 12, face = "bold"))
+
+p
+
+#library(svglite)
+#ggsave(file="beta.svg", plot=p, width=7, height=7)
+
+```
+
+```{r beta_statistics}
+#### Statistics ####
+
+#create data frame of metadata
+sampleDF <-  data.frame(sample_data(rare_phylo))
+
+# adonis : Analysis of variance using distance matrices
+adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF, strata = sampleDF$proximity, nperm = 999)
+
+#### significance of vegetation ####
+library(pairwiseAdonis)
+pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$Vegetation)
+
+#set proximity to vegetation as a random variable
+Vegetation = sample_data(rare_phylo)$Vegetation
+proximity1 = sample_data(rare_phylo)$proximity1
+
+pairwise.adonis2(DistBC ~ Vegetation, strata = "proximity1", data= data.frame(sample_data(rare_phylo)))
+
+
+# betadisper - analysis of multivariate homogeneity of group dispersion (variances)
+beta <- betadisper(DistBC, sampleDF$vegetation)
+anova(beta)
+permutest(beta)
+
+
+#### significance of month ####
+library(pairwiseAdonis)
+pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$Month)
+
+
+Month = sample_data(rare_phylo)$Month
+proximity1 = sample_data(rare_phylo)$proximity1
+
+pairwise.adonis2(DistBC ~ Month, strata = "proximity1", data= data.frame(sample_data(rare_phylo)))
+
+
+
+# betadisper - analysis of multivariate homogeneity of group dispersion (variances)
+beta <- betadisper(DistBC, sampleDF$Month)
+anova(beta)
+permutest(beta)
+
+
+#### significance of vegetation*month ####
+library(pairwiseAdonis)
+pairwise_adon <- pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$month_veg)
+
+
+month_veg = sample_data(rare_phylo)$month_veg
+proximity1 = sample_data(rare_phylo)$proximity1
+
+pairwise.adonis2(DistBC ~ month_veg, strata = "proximity1", data= data.frame(sample_data(rare_phylo)))
+
+library(dplyr)
+
+# betadisper - analysis of multivariate homogeneity of group dispersion (variances)
+beta <- betadisper(DistBC, sampleDF$month_veg)
+anova(beta)
+permutest(beta)
+
+```
+
+```{r session_info}
+library(devtools)
+session_info()
+```

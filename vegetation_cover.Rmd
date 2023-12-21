@@ -1,0 +1,91 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Vegetation Cover
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 6,
+  fig.width = 9,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Vegetation Cover** 
+
+- vegetation cover calculated from drone images
+- data for each month is the percentage vegetation cover of all three plots
+- sum vegetation/sum of plot area *100
+
+```{r}
+vegetation <- read.csv("Raw_data/vegetation_cover/all_months.csv", head = TRUE)
+
+#calculate average of all months for each vegetation type
+library(dplyr)
+vegetation$Means <-apply(vegetation [,3:7], 1 ,mean)
+
+vegetation$SiteID <- factor(vegetation$SiteID, levels = c("Grass", "Mesquite_Grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite"))
+
+vegetation$Vegetation <- factor(vegetation$Vegetation, levels = c("Grass", "Mesquite", "Bare"), 
+                  labels = c("Grass", "Mesquite", "Bare Soil"))
+
+#build pie chart
+library(ggplot2)
+library(ggeasy)
+library(ggrepel)
+library(tidyverse)
+
+m_label <- c("Grass-Mesquite")
+names(m_label) <- c("Grass-Mesquite")
+
+veg <- ggplot(vegetation, aes(x="", y=Means, fill=Vegetation)) +
+  geom_bar(stat="identity", width=1) +
+  facet_wrap(~factor(SiteID, levels = c("Grass", "Grass-Mesquite", "Mesquite")), strip.position = "bottom")+
+  coord_polar("y", start=0) +
+  ggtitle("% Vegetation Cover in Study Sites")+
+ theme_linedraw()+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank(),
+        strip.text.x = element_text(size = 10),
+        plot.title = element_text(face="bold"))+
+  geom_col(width = 1, color = 1) +
+  geom_text(aes(x = 1.2, label = paste0(round(Means, digits = 1), "%")), size=3.2,fontface='bold', 
+            position = position_stack(vjust = 0.5))+
+  ggeasy::easy_center_title()+
+  scale_fill_manual(values=c("Mesquite" ="#c1292e", "Bare Soil" = "#e1bc29", "Grass" = "#679436"), name = "Vegetation") #add custom colors
+
+veg
+
+#library(svglite)
+#ggsave(file="percent_vegetation_cover.svg", plot=veg, width=9, height=6)
+
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/veg_cover.png", plot=veg, width=10, height=7)
+```

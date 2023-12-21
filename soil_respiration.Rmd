@@ -1,0 +1,139 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Soil Respiration
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 15pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 6,
+  fig.width = 9,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+#removed one outlier
+MG2_c3 -- resp = -466.1359402
+```{r}
+
+
+my_data <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/respiration/CO2_adjusted_w_start.csv")
+
+my_data$veg_abrev <- factor(my_data$Vegetation, levels = c("Grass", "Grass-Mesquite", "Mesquite"), 
+                  labels = c("G", "T", "M")) 
+
+
+# CO2_measure_for_R is values without adjusting for start CO2
+# CO2_raw.csv is values in jar without adjusting for biomass and not including start C02
+# CO2_adjust_w_start is values adjusted for biomass and start CO2
+# CO2_site is values of empty jar
+
+
+library(ggplot2)
+library(ggpubr)
+
+my_data$facet = factor(my_data$Month, levels = c("March", "May", "July"))
+
+p = ggplot(my_data, aes(x=Vegetation, y=Respiration))  + #plot CO2 by vegetation type
+  geom_boxplot(lwd=.8, aes(fill=veg_abrev))  + # add box plot
+  theme_bw()+ # remove grey background
+  facet_wrap(~factor(my_data$Month, levels = c("March", "May", "July")))+ #group by month
+  labs(y=expression(paste(CO[2], ~g^{-1}, "of biomass ", h^{-1})))+ # change y axis label
+  ggtitle (expression(paste(CO[2], " Measurements Across Seasons and Vegetation")))+
+  scale_fill_manual(values=c("M" ="#c1292e", "G" = "#679436", "T" = "#e1bc29"))+ 
+  theme( text = element_text(size = 15), legend.position = "none", axis.title.x=element_blank(), axis.text.x = element_text(angle=35, vjust = 0.95, hjust =0.95))
+
+  
+
+p 
+
+```
+
+```{r add_signif}
+library(ggprism)
+library(dplyr)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+
+# make tukey hsd dataframe with rstatix package
+stat.test <- aov(Respiration ~ Month*veg_abrev, data = my_data) %>%
+  tukey_hsd()
+
+# add column with complete tukey comparison
+stat.test$full_compar = paste(stat.test$group1, stat.test$group2, sep="-")
+
+# filter out everything not looking at vegetation:month
+stat<- dplyr::filter(stat.test, grepl("Month:veg_abrev", term))
+
+
+#isolate comparisons that are relevant
+jul_stat <- dplyr::filter(stat, grepl("^.*July:.*July:", full_compar))
+may_stat <- dplyr::filter(stat, grepl("^.*May:.*May:", full_compar))
+march_stat <- dplyr::filter(stat, grepl("^.*March:.*March:", full_compar)) 
+
+
+# merge relevant comparisons to one datafram
+stat_mon <- jul_stat %>%
+  dplyr::full_join(may_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+
+stat_mon <- stat_mon %>%
+ dplyr:: full_join(march_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+
+# make a column with only Veg_abrev so that this dataset matches with the PLFA data
+stat_mon <- separate(data = stat_mon, col = group2, into = c("Month", "group2"), sep = "\\:")
+
+#remove vegetation abbreviation from group2
+stat_mon$group1<- gsub('May:','',stat_mon$group1)
+stat_mon$group1<- gsub('March:','',stat_mon$group1)
+stat_mon$group1<- gsub('July:','',stat_mon$group1)
+
+#filter out non significant values
+stat_mon <- stat_mon %>%
+filter(stat_mon$p.adj < .05) 
+
+stat_mon$group1 <- gsub('G','Grass',stat_mon$group1)
+stat_mon$group2 <- gsub('M','Mesquite',stat_mon$group2)
+stat_mon$group2 <- gsub('T','Grass-Mesquite',stat_mon$group2)
+
+
+# select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
+grouped_for_plot <- stat_mon %>%
+  select(group1, group2, p.adj, p.adj.signif, Month) %>%
+  as.tibble()
+  
+#manually add y-position for each p-value
+grouped_for_plot <- grouped_for_plot %>%
+  add_column(y.position = c(67, 67))
+
+
+# merge the p-values with the plot
+with_p <- p +  add_pvalue(grouped_for_plot)
+with_p
+
+library(svglite)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/respiration.png", plot=with_p, width=7, height=9)
+```

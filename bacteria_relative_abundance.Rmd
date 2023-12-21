@@ -1,0 +1,239 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Bacteria Relative Abundance
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r}
+
+library(phyloseq)
+
+biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_nov_1.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
+
+otu <- otu_table(biom_data_raw)
+otu <- as.data.frame(otu)
+otu <- t(otu)
+
+write.csv(otu, "otu.csv")
+
+mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+
+
+# Merge the OTU and mapping data into a phyloseq object
+phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+```{r}
+library(decontam)
+
+# threshold 0.5, identifies 9 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+#prune the contaminated taxa
+phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
+phylo_rm_contaminat #after
+
+#remove any left over controls so they dont impact normalization
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+
+## remove unknowns and archaea, keep only bacteria
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
+```
+```{r order_abund_plot}
+
+library(microbiomeutilities)
+library(DT)
+library(dplyr)
+library(microbiome)
+library(scales)
+
+phy2 <- phylo_rm_archaea %>% aggregate_top_taxa2(level = "Order", top = 10) %>%
+          microbiome::transform(transform = "compositional")
+
+phy2
+
+plot_bar(phy2, x="vegetation", fill="Order")  +
+  geom_bar(aes(color=Order, fill=Order), stat="identity", position="stack")
+```
+
+#**Dominant taxa data table**
+- microbiomeutilities package
+- https://microsud.github.io/microbiomeutilities/articles/microbiomeutilities.html 
+```{r order_tabel}
+
+library(microbiomeutilities)
+library(DT)
+library(dplyr)
+
+#subset samples
+
+#subset to grass
+grass_ps <- subset_samples(phylo_rm_archaea, vegetation=="Grass")
+#subset to grass_mesquite
+grass_mesquite_ps <- subset_samples(phylo_rm_archaea, vegetation=="Mesquite_grass")
+#subset to mesquite
+mesquite_ps <- subset_samples(phylo_rm_archaea, vegetation=="Mesquite")
+
+
+
+                                 
+#get_group_abundances -- "will return values for entire dataset, akin to taxa_summary."
+      # taxa_summary -- "returns a data frame with relative abundance summary"
+
+### grass
+grp_abund_grass <- get_group_abundances(grass_ps, 
+                                  level = "Order", 
+                                  group="vegetation",
+                                  transform = "compositional")
+
+
+grp_abund_grass   <- grp_abund_grass  [which(grp_abund_grass $mean_abundance > 0.01),]
+
+grp_abund_grass $mean_abundance_percentage <- grp_abund_grass $mean_abundance*100
+
+
+grp_abund_grass [c("mean_abundance", "sd_abundance", "mean_abundance_percentage")] <-  round(grp_abund_grass [c("mean_abundance", "sd_abundance", "mean_abundance_percentage")], 3)
+
+df_grass = subset(grp_abund_grass, select = c("OTUID", "sd_abundance", "mean_abundance_percentage"))
+
+colnames(df_grass) = c("Order", "Abundance SD", "Mean Relative Abundance (%)")
+
+df_grass <- df_grass [,c("Order","Mean Relative Abundance (%)", "Abundance SD")]
+
+df_grass$Order<- gsub('o__','',df_grass$Order)
+
+df_grass  [1:24, ] %>%
+    datatable(caption = "Relative Abundance of Orders in Grass Plots",  rownames= FALSE)
+
+### Mesquite grass
+
+grp_abund_gm <- get_group_abundances(grass_mesquite_ps, 
+                                  level = "Order", 
+                                  group="vegetation",
+                                  transform = "compositional")
+
+
+grp_abund_gm   <- grp_abund_gm  [which(grp_abund_gm $mean_abundance > 0.01),]
+
+grp_abund_gm $mean_abundance_percentage <- grp_abund_gm $mean_abundance*100
+grp_abund_gm $sd_abundance <- grp_abund_gm $sd_abundance*100
+
+grp_abund_gm [c("mean_abundance", "sd_abundance", "mean_abundance_percentage")] <-  round(grp_abund_gm [c("mean_abundance", "sd_abundance", "mean_abundance_percentage")], 3)
+
+df_gm = subset(grp_abund_gm, select = c("OTUID", "sd_abundance", "mean_abundance_percentage"))
+
+colnames(df_gm) = c("Order", "Abundance SD", "Mean Relative Abundance (%)")
+
+df_gm <- df_gm [,c("Order","Mean Relative Abundance (%)", "Abundance SD")]
+
+
+df_gm$Order<- gsub('o__','',df_gm$Order)
+
+df_gm  [1:25, ] %>%
+    datatable(caption = "Relative Abundance of Orders in Grass-Mesquite Plots",  rownames= FALSE)
+
+
+
+### Mesquite 
+
+grp_abund_mesq <- get_group_abundances(mesquite_ps, 
+                                  level = "Order", 
+                                  group="vegetation",
+                                  transform = "compositional")
+
+
+grp_abund_mesq   <- grp_abund_mesq  [which(grp_abund_mesq $mean_abundance > 0.01),]
+
+grp_abund_mesq $mean_abundance_percentage <- grp_abund_mesq $mean_abundance*100
+
+grp_abund_mesq [c("mean_abundance", "sd_abundance", "mean_abundance_percentage")] <-  round(grp_abund_mesq [c("mean_abundance", "sd_abundance", "mean_abundance_percentage")], 3)
+
+df_mesq = subset(grp_abund_mesq, select = c("OTUID", "sd_abundance", "mean_abundance_percentage"))
+
+colnames(df_mesq) = c("Order", "Abundance SD", "Mean Relative Abundance (%)")
+
+df_mesq <- df_mesq [,c("Order","Mean Relative Abundance (%)", "Abundance SD")]
+
+df_mesq$Order<- gsub('o__','',df_mesq$Order)
+
+df_mesq [1:25, ] %>%
+    datatable(caption = "Relative Abundance of Orders in Mesquite Plots",  rownames= FALSE)
+
+
+###################
+#view the dominant taxa in each sample 
+  # in the table n = the number of samples
+  # in the table the % is the % of samples that were dominated by that group
+
+grass_ps <- aggregate_taxa(grass_ps,"Genus")
+grass_df <- dominant_taxa(grass_ps,level = "Order", group="vegetation")
+
+
+grass_df$dominant_overview[1:5, ] %>%
+    datatable(caption = "Dominant Orders in Grass Site",  rownames= FALSE)
+
+
+
+grass_mesquite_ps <- aggregate_taxa(grass_mesquite_ps,"Genus")
+grass_mesquite_df <- dominant_taxa(grass_mesquite_ps,level = "Order", group="vegetation")
+
+
+grass_mesquite_df$dominant_overview[1:5, ] %>%
+    datatable(caption = "Dominant Orders in Grass-Mesquite Site",  rownames= FALSE)
+
+
+
+mesquite_ps <- aggregate_taxa(mesquite_ps,"Genus")
+mesquite_df <- dominant_taxa(mesquite_ps,level = "Order", group="vegetation")
+
+
+mesquite_df$dominant_overview[1:8, ] %>%
+    datatable(caption = "Dominant Orders in Mesquite Site",  rownames= FALSE)
+
+```
+
+
+```{r session_info}
+library(devtools)
+session_info()
+```

@@ -1,0 +1,10 @@
+```{r}
+
+metadata <- read.csv("Bacteria/CORRECTED_metadata.csv", header = TRUE)
+
+plot(metadata$bacterial_biomass_percentage, metadata$carbon_to_nitrogen_ratio)
+
+mod <- lm(metadata$carbon_to_nitrogen_ratio ~ metadata$bacterial_biomass_percentage)
+
+summary(mod)
+```

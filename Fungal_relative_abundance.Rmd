@@ -1,0 +1,191 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Fungal Relative Abundance
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# **Import qiime formatted data**
+  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+
+```{r import_data}
+
+library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
+
+
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungi_dada2_data.RData") 
+#contains taxa and otu table
+
+
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_oct_28_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+
+```{r decontam}
+library(decontam)
+
+# threshold 0.5, identifies 0 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+
+#remove any left over controls so they don't impact rarefy
+#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
+phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id != "ControlL2")
+```
+
+```{r order_abund_plot}
+
+library(microbiomeutilities)
+library(DT)
+library(dplyr)
+library(microbiome)
+library(scales)
+
+#phy2 <- phylo_rm_archaea %>%
+  # transform_sample_counts(function(x) {x/sum(x)}) %>% 
+  # transform_sample_counts(function(x) {x*100}) %>%
+  # aggregate_top_taxa2(level = "Order", top = 10) %>% 
+  # psmelt()
+
+
+ps <- tax_glom(phylo_rm_cntrl, "Order") 
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Vegetation")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x)) %>%
+  aggregate_top_taxa2(level = "Order", top = 10) %>%
+  psmelt()
+
+
+#remove o__
+ps2$order2 <- gsub('o__','', ps2$Order)
+
+
+
+plot <- ggplot(ps2, aes(x = Sample, y = Abundance, fill = factor(order2, levels = c("Agaricales", "Cantharellales", 
+                                                                         "Capnodiales", "Chaetothyriales",
+                                                                         "Dothideales", "Pezizales",
+                                                                         "Pleosporales", "Sordariales",
+                                                                         "Tremellales", "Xylariales",
+                                                                         "Other"))) ) +
+  geom_bar( stat="identity") +
+  scale_fill_manual(values=c("Agaricales" ="#d00000", "Cantharellales" = "#ffba08", "Capnodiales" = "#cbff8c", "Chaetothyriales" = "#8fe388" , "Dothideales" ="#1b998b", "Pezizales" ="#3185fc", "Pleosporales" = "#a68fdd", "Sordariales" = "#46237a", "Tremellales" = "#ff7b9c", "Xylariales" = "#ff9b85", "Other" = "grey"), name = "Order") +
+    theme_linedraw()+
+    theme( axis.title.x = element_blank()) +
+  ggtitle ("Relative Abundance of Top 10 Fungal Orders")
+
+plot
+
+# library(svglite)
+# ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_rel_abund.png", plot=plot, width=9, height=7)
+```
+
+
+```{r order_abund_plot_month}
+
+library(microbiomeutilities)
+library(DT)
+library(dplyr)
+library(microbiome)
+library(scales)
+
+#phy2 <- phylo_rm_archaea %>%
+  # transform_sample_counts(function(x) {x/sum(x)}) %>% 
+  # transform_sample_counts(function(x) {x*100}) %>%
+  # aggregate_top_taxa2(level = "Order", top = 10) %>% 
+  # psmelt()
+
+
+ps <- tax_glom(phylo_rm_cntrl, "Order") 
+ps0 <- transform_sample_counts(ps, function(x) x / sum(x))
+ps1_month <- merge_samples(ps0, "Month")
+ps2_month <- transform_sample_counts(ps1_month, function(x) x / sum(x)) %>%
+  aggregate_top_taxa2(level = "Order", top = 10) %>%
+  psmelt()
+
+
+
+
+#remove o__
+ps2_month$order2 <- gsub('o__','', ps2_month$Order)
+
+
+
+plot_month <- ggplot(ps2_month, aes(x = factor(Sample, levels = c("October", "January", "March", "May", "July")), y = Abundance, fill = factor(order2, levels = c("Agaricales", "Cantharellales", 
+                                                                         "Capnodiales", "Chaetothyriales",
+                                                                         "Dothideales", "Pezizales",
+                                                                         "Pleosporales", "Sordariales",
+                                                                         "Tremellales", "Xylariales",
+                                                                         "Other"))) ) +
+  geom_bar( stat="identity") +
+  scale_fill_manual(values=c("Agaricales" ="#d00000", "Cantharellales" = "#ffba08", "Capnodiales" = "#cbff8c", "Chaetothyriales" = "#8fe388" , "Dothideales" ="#1b998b", "Pezizales" ="#3185fc", "Pleosporales" = "#a68fdd", "Sordariales" = "#46237a", "Tremellales" = "#ff7b9c", "Xylariales" = "#ff9b85", "Other" = "grey"), name = "Order") +
+    theme_linedraw()+
+    theme( axis.title.x = element_blank()) +
+  ggtitle ("Relative Abundance of Top 10 Fungal Orders by Month")
+
+plot_month
+
+# library(svglite)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_rel_abund_month.png", plot=plot_month, width=9, height=7)
+```

@@ -1,0 +1,63 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''>Sequence Analyses
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 4,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+# Variables
+  - vegetation
+  - season
+  - air temperature
+  - soil temperature
+  - humidity
+  - microbial biomass
+  - soil pH
+  - soil C:N
+
+# Alpha Diversity
+
+  - https://rpubs.com/lconteville/713954 
+
+# Beta Diversity
+
+  - https://rpubs.com/lconteville/714853 
+
+# Co-occurence Network
+
+# Indicator Species Analysis
+
+  - https://jkzorz.github.io/2019/07/02/Indicator-species-analysis.html
+
+# Mixed Effects Models
+
