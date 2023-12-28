@@ -424,6 +424,38 @@ library(svglite)
 ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
 ```
 
+#**Fungi to bacteria**
+
+"The ratio of fungal:bacterial biomass has been shown to be particularly sensitive to soil disturbance, with lower ratios associated with increased intensity of cultivation (Bailey et al., 2002; Beare et al., 1992; Frey et al., 1999), increased grazing pressure (Bardgett et al., 1996, 1998), and increased N fertilization inputs (Bardgett and McAlister, 1999; Bardgett et al., 1996, 1999; Frey et al., 2004)." -- six et al.
+
+```{r}
+#read data
+
+ratio <- read.csv("Raw_data/PLFA/PLFA_bac_to_fungi_ratio.csv")
+head(ratio)
+
+#plot
+
+library(ggplot2)
+library(dplyr)
+#change order of variables so that the facet in the plot is in the best order
+ratio <- ratio %>% mutate(Vegetation = factor(Vegetation, levels = c("Grass","Mesquite-Grass","Mesquite")))
+
+#plot fungal biomass
+PLFA_ratio <- ggplot(ratio,
+            aes(x=factor(Vegetation),
+                y = fungi_to_bacteria))+
+  geom_boxplot(show.legend = FALSE, aes(fill=Month))+
+  facet_grid(~Month)+
+  theme_linedraw()+
+  #ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
+  theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
+
+PLFA_ratio
+
+```
+
 ```{r session_info}
 library(devtools)
 session_info()
