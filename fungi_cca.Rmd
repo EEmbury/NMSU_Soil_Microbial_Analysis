@@ -1,0 +1,223 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> Fungi CCA
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 15pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 8,
+  fig.width = 9,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+```{r import_data}
+
+library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
+
+
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungi_dada2_data.RData") 
+#contains taxa and otu table
+
+
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_oct_28_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
+#Add names to biom table and check phyloseq objects
+colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
+```
+
+# **remove controls + contaminants**
+
+```{r decontam}
+library(decontam)
+
+# threshold 0.5, identifies 0 contaminants
+contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
+table(contamdf.prev05$contaminant)
+
+
+#remove any left over controls so they don't impact rarefy
+#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
+phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id != "ControlL2")
+
+```
+
+```{r}
+ps_rel <- transform_sample_counts(phylo_rm_cntrl, function(x) x / sum(x))
+
+otu_all <- as.data.frame(otu_table(ps_rel)) 
+
+row.names.remove <- c("Control1", "Control2")
+
+sam_data <- sam[!(row.names(sam) %in% row.names.remove), ]
+
+samdata <- sam_data[-c(2:10, 13, 14, 16, 17)]
+
+df <- rownames_to_column(otu_all, var = "sample.id")
+
+merged <- merge(df, samdata, "sample.id")
+
+colnames(samdata) <- c("sample.id", "Soil Temp", "Soil pH", "C:N", "Avg. Air Temp", "Avg. Humid.", "Avg. ppt", "month_veg", "Vegetation", "Month")
+```
+
+#significance testing of cca plot (https://cran.r-project.org/web/packages/vegan/vignettes/intro-vegan.pdf) https://fromthebottomoftheheap.net/slides/advanced-vegan-webinar-2020/advanced-vegan#58
+
+https://rpubs.com/an-bui/vegan-cheat-sheet
+
+```{r}
+library(vegan)
+
+mod_all <- cca(otu_all ~ `Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`, samdata)
+
+aov <- anova(mod_all, by="term", permutations=999)
+aov
+
+write.table(aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_cca_aov.txt", sep = ",", quote = FALSE, row.names = T)
+
+
+# 
+# how <- how(nperm=499, plots = Plots(strata=samdata$month_veg))
+# anova(mod_all, permutations = how)
+# 
+# RsquareAdj(mod_all)
+
+
+# ## Limited output of 'summary'
+# head(summary(mod), tail=2)
+# ## Scaling can be numeric or more user-friendly names
+# ## e.g. Hill's scaling for (C)CA
+# scrs <- scores(mod, scaling = "sites", hill = TRUE)
+# ## or correlation-based scores in PCA/RDA
+# scrs <- scores(rda(dune ~ A1 + Moisture + Management, dune.env),
+#                scaling = "sites", correlation = TRUE)
+# 
+
+```
+
+```{r}
+site_type <- samdata %>% 
+  select(sample.id, Vegetation, Month, month_veg)
+
+# vectors
+ccavectors <- as.matrix(scores(mod_all, display = "bp", scaling = "species")*7.627807) %>% 
+  as.data.frame()
+
+# site coordinates
+site_data <- scores(mod_all, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("sample.id") %>%
+  full_join(site_type, by = "sample.id")
+
+
+# species coordinates
+species_data <- scores(mod_all, display = "species") %>% 
+  as.data.frame()
+
+# plotting
+plot_cca_veg <- ggplot(site_data) +
+  geom_point(aes(x = CCA1, y = CCA2, color = Vegetation), shape = 19, size = 2, alpha = 0.8) +
+  coord_fixed() +
+  geom_segment(data = ccavectors, aes(x = 0, y = 0, xend = CCA1, yend = CCA2), arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+   scale_x_continuous(limits = c(-9, 11)) +
+  scale_y_continuous(limits = c(-5, 5)) +
+geom_text(data = ccavectors, aes(x = 1.25*CCA1, y = 1.25*CCA2, label = rownames(ccavectors)), size=3) +
+  labs(title = "Fungal Canonical Correspondence Analysis - Vegetation") +
+  theme_linedraw()+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  scale_color_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))
+
+plot_cca_veg
+library(svglite)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_cca_veg.png", device = png, plot=plot_cca_veg, width=7, height=5)
+
+plot_cca_month <- ggplot(site_data) +
+  geom_point(aes(x = CCA1, y = CCA2, color = Month), shape = 19, size = 2, alpha = 0.8) +
+  coord_fixed() +
+  geom_segment(data = ccavectors, aes(x = 0, y = 0, xend = CCA1, yend = CCA2), arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+   scale_x_continuous(limits = c(-9, 11)) +
+  scale_y_continuous(limits = c(-5, 5)) +
+ geom_text(data = ccavectors, aes(x = 1.25*CCA1, y = 1.25*CCA2, label = rownames(ccavectors)), size=3) +
+  labs(title = "Fungal Canonical Correspondence Analysis - Month") +
+  theme_linedraw()+
+    theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  scale_color_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month")
+
+plot_cca_month
+library(svglite)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_cca_month.png", device = png, plot=plot_cca_month, width=7, height=5)
+
+plot_cca_mon_veg <- ggplot(site_data) +
+  geom_point(aes(x = CCA1, y = CCA2, color = month_veg), shape = 19, size = 2, alpha = 0.8) +
+  coord_fixed() +
+  geom_segment(data = ccavectors, aes(x = 0, y = 0, xend = CCA1, yend = CCA2), arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_vline(xintercept = c(0), color = "grey70", linetype = 2) +
+  geom_hline(yintercept = c(0), color = "grey70", linetype = 2) +
+   scale_x_continuous(limits = c(-9, 11)) +
+  scale_y_continuous(limits = c(-5, 5)) +
+  geom_text(data = ccavectors, aes(x = 1.25*CCA1, y = 1.25*CCA2, label = rownames(ccavectors)), size=3) +
+  labs(title = "Canonical Correspondence Analysis - Month x Vegetation") +
+  theme_linedraw()
+
+plot_cca_mon_veg
+```
+
+Other ways to assess muiltivariate correlations
+
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3506578/
+
+https://userweb.eng.gla.ac.uk/umer.ijaz/projects/microbiomeSeq_Tutorial.html#correlation
