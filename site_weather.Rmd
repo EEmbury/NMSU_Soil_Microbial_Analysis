@@ -121,8 +121,9 @@ SiteID_mean_weather$Month <- format(SiteID_mean_weather$Month, format = "%B")
 precip <- ggplot(SiteID_mean_weather[which(SiteID_mean_weather$Ppt_mm_Tot >0),], aes(x=Date, y=Ppt_mm_Tot, color = Month))+
   geom_point() +
   scale_x_date(date_labels = "%B", date_breaks = "1 month")+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
-  ggtitle("2022-2023 Monthly Precipitation")+
+    theme_linedraw()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position = "none")+
+  #ggtitle("2022-2023 Monthly Precipitation")+
   ylab("Precipitation (mm)")+
   xlab("Month")+
   scale_colour_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"))
@@ -131,10 +132,10 @@ precip <- ggplot(SiteID_mean_weather[which(SiteID_mean_weather$Ppt_mm_Tot >0),],
 relhumid <- ggplot(SiteID_mean_weather, aes(x=Date, y=Relative_Humidity_Avg, color = Month))+
   geom_point() +
   scale_x_date(date_labels = "%B", date_breaks = "1 month")+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
-  ggtitle("2022-2023 Monthly Relative Humidity")+
+  #ggtitle("2022-2023 Monthly Relative Humidity")+
   ylab("Average Relative Humidity")+
-  xlab("Month")+
+  theme_linedraw()+
+  theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x   = element_blank(), legend.position = "none") + 
   scale_colour_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"))
 
 
@@ -142,14 +143,18 @@ relhumid <- ggplot(SiteID_mean_weather, aes(x=Date, y=Relative_Humidity_Avg, col
 temp <- ggplot(SiteID_mean_weather, aes(x=Date, y=Air_TempC_Avg, color = Month))+
   geom_point() +
   scale_x_date(date_labels = "%B", date_breaks = "1 month")+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
-  ggtitle("2022-2023 Monthly Temperature")+
+  ggtitle("2022-2023 Monthly Weather")+
   ylab("Average Air Temperature (C)")+
-  xlab("Month")+
+  theme_linedraw()+
+  theme(axis.title.x = element_blank(), axis.text.x = element_blank(),legend.position = "none", axis.ticks.x   = element_blank()) + 
   scale_colour_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"))
 
 library(ggpubr)
-ggarrange(temp, relhumid, precip, ncol=1, nrow=3, common.legend = TRUE)
+weather <- ggarrange(temp, relhumid, precip, ncol=1, nrow=3)
+weather
+
+library(svglite)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/weather.png", device = png, plot=weather, width=7, height=7)
 
 ```
 
