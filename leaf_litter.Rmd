@@ -53,6 +53,8 @@ Collection Periods:
 ```{r import_data}
 litter_seived <- read.csv("Raw_data/litter/Litter_bags_seived_rm_open.csv")
 
+litter_seived$Vegetation <- factor(litter_seived$Vegetation, levels = c("Grass", "Mesquite-Grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
 ```
 
 ```{r}
@@ -65,19 +67,23 @@ library(Rmisc)
 litter_sum_seived <- summarySE(litter_seived, measurevar = "Biomass_change", groupvars=c("Decomp_days","Vegetation"))
 
 
+
 litter_plot_seived <- ggplot(litter_sum_seived, aes(x= Decomp_days, y = Biomass_change, group = Vegetation))+
   geom_line(aes(color=Vegetation))+
   geom_point()+
   theme_linedraw()+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
   xlab("Days") + # change x axis label
   ylab("Average Change in Biomass (g)")+ # change y axis label
   ggtitle("Leaf Litter Mass Lost in Different Vegetation Types")+
-  scale_color_manual(values=c("Mesquite" ="#c1292e", "Mesquite-Grass" = "#e1bc29", "Grass" = "#679436"))+
+  scale_color_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436"))+
   geom_errorbar(aes(ymin=Biomass_change-se, ymax=Biomass_change+se, color = Vegetation), width=4) 
   
 
 
 litter_plot_seived
+
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/leaf_litter.png", device = png, plot=litter_plot_seived, width=7, height=5)
 ```
 #**stats**
 ```{r}
@@ -87,6 +93,11 @@ library(tidyverse)
 #anova
 ll_aov <- aov(Biomass_change ~ Vegetation*Collection_period, data = litter_seived)
 summary(ll_aov)
+
+ll_aov_summary <- capture.output(summary(ll_aov)) 
+
+write.table(ll_aov_summary, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/leaf_litter_aov.txt", sep = ",", quote = FALSE, row.names = T)
+
 
 #check anova assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -103,10 +114,12 @@ ll_tuk <- TukeyHSD(ll_aov)
 #view post hoc results
 
 # decomp x vegetation
-ll_tuk$Vegetation
+tuk_veg <- ll_tuk$Vegetation
+write.table(tuk_veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/leaf_litter_tukey_veg.txt", sep = ",", quote = FALSE, row.names = T)
 
 # decomp x collection period
-ll_tuk$Collection_period
+col_perd <- ll_tuk$Collection_period
+write.table(col_perd, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/leaf_litter_tukey_coll_period.txt", sep = ",", quote = FALSE, row.names = T)
 
 # decomp x vegetation*veg
 tuk_cp_veg <- as.data.frame(ll_tuk$`Vegetation:Collection_period`)

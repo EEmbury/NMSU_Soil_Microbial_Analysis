@@ -160,7 +160,9 @@ abline(h=0, col = "red")
 
 
 #summary of anova results
-summary(mod.plfa.fun2)
+plfa_fun_aov <- capture.output(summary(mod.plfa.fun2))
+
+#write.table(plfa_fun_aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 #Post hoc analysis of anova
 tuk.plfa.fun2 <- TukeyHSD(mod.plfa.fun2)
@@ -168,13 +170,18 @@ tuk.plfa.fun2 <- TukeyHSD(mod.plfa.fun2)
 #tukeyHSD pairwise vegetation results based on ANOVA model  
 tuk.plfa.fun2$`PLFA_fun2$Veg_abrev`
 
+#tukeyHSD pairwise month results based on ANOVA model  
+plfa_month <- tuk.plfa.fun2$`PLFA_fun2$Month`
+
+#write.table(plfa_month, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_month.txt", sep = ",", quote = FALSE, row.names = T)
+
 library(dplyr)
 library(tibble)
 library(utils)
 library(tidyverse)
 
 # convert tukey results to dataframe
-x.fun <- as.data.frame(tuk.plfa.fun2$`PLFA_fun2$Month:PLFA_fun2$Veg_abrev`) 
+x.fun <- as.data.frame(tuk.plfa.fun2$`PLFA_fun2$Month:PLFA_fun2$Veg_abrev`)
 
 # get a column with the comparison labels
 y.fun <- tibble::rownames_to_column(x.fun, "label")
@@ -200,6 +207,7 @@ filter(fun$`p adj` < .05)
 #view signif
 fun_signif
 
+write.table(fun_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
 
@@ -215,6 +223,8 @@ mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg
 #summary of anova results
 summary(mod.plfa.bac)
 
+plfa_bac_aov <- capture.output(summary(mod.plfa.bac))
+#write.table(plfa_bac_aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 #check anova assumptions
 
@@ -231,8 +241,14 @@ abline(h=0, col = "red")
 #Post hoc analysis of anova
 tuk.plfa.bac <- TukeyHSD(mod.plfa.bac)
 
+
 #tukeyHSD pairwise vegetation results based on ANOVA model
-tuk.plfa.bac$`PLFA_bac$Veg_abrev`
+tuk_veg_bac <- tuk.plfa.bac$`PLFA_bac$Veg_abrev`
+
+
+
+tuk_month_bac <- tuk.plfa.bac$`PLFA_bac$Month`
+write.table(tuk_month_bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_month.txt", sep = ",", quote = FALSE, row.names = T)
 
 library(dplyr)
 library(tibble)
@@ -265,6 +281,8 @@ filter(bac$`p adj` < .05)
 
 #view signif
 bac_signif
+
+#write.table(bac_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
 # **Manually Set Fungal p-values**
@@ -453,6 +471,22 @@ PLFA_ratio <- ggplot(ratio,
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
 PLFA_ratio
+
+
+plfa_ratio_aov <- aov(ratio$fungi_to_bacteria ~ ratio$Vegetation*ratio$Month)
+summary(plfa_ratio_aov)
+
+ratio_plfa <- capture.output(summary(plfa_ratio_aov))
+
+#write.table(ratio_plfa, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_ratio_aov.txt", sep = ",", quote = FALSE, row.names = T)
+
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(plfa_ratio_aov$residuals) #normal q-q plot, tests normality
+qqline(plfa_ratio_aov$residuals, col = "red") #line of fit on q-q plot
+plot(plfa_ratio_aov$fitted.values, plfa_ratio_aov$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
 
 ```
 

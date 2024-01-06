@@ -36,26 +36,47 @@ knitr::opts_chunk$set(
 ```
 
 
-# **Import qiime formatted data**
-  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+# **Import formatted data**
 
 ```{r}
 
 library(phyloseq)
-
-biom_data_raw <- import_biom(BIOMfilename = "Bacteria/bacteria_taxa_table_nov_1.biom", refseqfilename = "Bacteria/bacteria-dna-sequences-rare.fasta")
-
-otu <- otu_table(biom_data_raw)
-otu <- as.data.frame(otu)
-otu <- t(otu)
-
-write.csv(otu, "otu.csv")
-
-mapping_file <- import_qiime_sample_data(mapfilename = "Bacteria/CORRECTED_metadata.tsv")
+library(phyloseq)
+library(dplyr)
+library(tidyverse)
+library(vegan)
 
 
-# Merge the OTU and mapping data into a phyloseq object
-phylo_raw <- merge_phyloseq(biom_data_raw, mapping_file)
+load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_dada2_data.RData") 
+#contains taxa and otu table
+
+
+#import metadata
+sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Bacteria/dada2_files/nov_2_metadata.csv", header = TRUE) 
+rownames(sam) <- sam$sample.id
+
+#add month_veg row to data
+sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
+#adjust sample data labels
+sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
+                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+
+sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
+                  labels = c("October", "January", "March", "May", "July"))
+
+#compile data into phyloseq object
+phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+               sample_data(sam), 
+               tax_table(taxa))
+
+
+dna <- Biostrings::DNAStringSet(taxa_names(phylo_raw))
+names(dna) <- taxa_names(phylo_raw)
+phylo_raw <- merge_phyloseq(phylo_raw, dna)
+taxa_names(phylo_raw) <- paste0("ASV", seq(ntaxa(phylo_raw)))
+phylo_raw
+
 #Add names to biom table and check phyloseq objects
 colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
 ```
@@ -64,7 +85,7 @@ colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","G
 ```{r}
 library(decontam)
 
-# threshold 0.5, identifies 9 contaminants
+# threshold 0.5, identifies 6 contaminants
 contamdf.prev05 <- isContaminant(phylo_raw, method="prevalence", neg="neg", threshold=0.5)
 table(contamdf.prev05$contaminant)
 
@@ -72,13 +93,17 @@ table(contamdf.prev05$contaminant)
 phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
 phylo_rm_contaminat #after
 
-#remove any left over controls so they dont impact normalization
-phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1-S1" & sample.id != "CONTROL2-S79" & sample.id != "CONTROL3-S109")
+#remove any left over controls so they don't impact rarefy
+#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3")
+
 
 ## remove unknowns and archaea, keep only bacteria
-bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "d__Bacteria")
+bac <- subset_taxa(phylo_rm_contaminat_rm_cntrl, Kingdom == "Bacteria")
 phylo_rm_archaea <- prune_taxa(c(taxa_names(bac)), phylo_rm_contaminat_rm_cntrl) 
+phylo_rm_archaea 
 ```
+
 ```{r order_abund_plot}
 
 library(microbiomeutilities)
@@ -87,13 +112,62 @@ library(dplyr)
 library(microbiome)
 library(scales)
 
-phy2 <- phylo_rm_archaea %>% aggregate_top_taxa2(level = "Order", top = 10) %>%
-          microbiome::transform(transform = "compositional")
 
-phy2
+ps <- transform_sample_counts(phylo_rm_archaea, function(x) x / sum(x)) %>%
+  aggregate_top_taxa2(level = "Class", top = 10) %>%
+  merge_samples("Vegetation") %>%
+  psmelt()
 
-plot_bar(phy2, x="vegetation", fill="Order")  +
-  geom_bar(aes(color=Order, fill=Order), stat="identity", position="stack")
+
+#remove c__
+ps$Class2 <- gsub('c__','', ps$Class)
+
+
+
+plot <- ggplot(ps, aes(x = Sample, y = Abundance, fill = factor(Class2, levels = c("Actinobacteria", "Alphaproteobacteria", "Bacteroidia", "Blastocatellia", "Chloroflexia", "Gammaproteobacteria", "Gemmatimonadetes",
+ "Planctomycetes","Thermoleophilia","Vicinamibacteria", "Other")))) +
+  geom_bar( stat="identity") +
+  scale_fill_manual(values=c("Actinobacteria" ="#d00000", "Alphaproteobacteria" = "#ffba08", "Bacteroidia" = "#cbff8c", "Blastocatellia" = "#8fe388" , "Chloroflexia" ="#1b998b", "Gammaproteobacteria" ="#3185fc", "Gemmatimonadetes" = "#a68fdd", "Planctomycetes" = "#46237a", "Thermoleophilia" = "#ff7b9c", "Vicinamibacteria" = "#ff9b85", "Other" = "grey"), name = "Class") +
+    theme_linedraw()+
+    theme( axis.title.x = element_blank()) +
+  ggtitle ("Relative Abundance of Top 10 Bacterial Classes")+
+    theme(plot.title = element_text(face = "bold", hjust = 0.5)) 
+
+plot
+
+# library(svglite)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_rel_abund_veg.png", plot=plot, width=7, height=5)
+
+```
+
+
+```{r}
+ps <- transform_sample_counts(phylo_rm_archaea, function(x) x / sum(x)) %>%
+  aggregate_top_taxa2(level = "Class", top = 10) %>%
+  merge_samples("Month") %>%
+  psmelt()
+
+
+#remove c__
+ps$Class2 <- gsub('c__','', ps$Class)
+
+
+
+
+plot <- ggplot(ps, aes(x = factor(Sample, levels = c("October", "January", "March", "May", "July")), y = Abundance, fill = factor(Class2, levels = c("Actinobacteria", "Alphaproteobacteria", "Bacteroidia", "Blastocatellia", "Chloroflexia", "Gammaproteobacteria", "Gemmatimonadetes",
+ "Planctomycetes","Thermoleophilia","Vicinamibacteria", "Other")))) +
+  geom_bar( stat="identity") +
+  scale_fill_manual(values=c("Actinobacteria" ="#d00000", "Alphaproteobacteria" = "#ffba08", "Bacteroidia" = "#cbff8c", "Blastocatellia" = "#8fe388" , "Chloroflexia" ="#1b998b", "Gammaproteobacteria" ="#3185fc", "Gemmatimonadetes" = "#a68fdd", "Planctomycetes" = "#46237a", "Thermoleophilia" = "#ff7b9c", "Vicinamibacteria" = "#ff9b85", "Other" = "grey"), name = "Class") +
+    theme_linedraw()+
+    theme( axis.title.x = element_blank()) +
+  ggtitle ("Relative Abundance of Top 10 Bacterial Classes")+
+    theme(plot.title = element_text(face = "bold", hjust = 0.5)) 
+
+plot
+
+# library(svglite)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_rel_abund_month.png", plot=plot, width=7, height=5)
+
 ```
 
 #**Dominant taxa data table**

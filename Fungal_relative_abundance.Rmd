@@ -133,12 +133,13 @@ plot <- ggplot(ps2, aes(x = Sample, y = Abundance, fill = factor(order2, levels 
   scale_fill_manual(values=c("Agaricales" ="#d00000", "Cantharellales" = "#ffba08", "Capnodiales" = "#cbff8c", "Chaetothyriales" = "#8fe388" , "Dothideales" ="#1b998b", "Pezizales" ="#3185fc", "Pleosporales" = "#a68fdd", "Sordariales" = "#46237a", "Tremellales" = "#ff7b9c", "Xylariales" = "#ff9b85", "Other" = "grey"), name = "Order") +
     theme_linedraw()+
     theme( axis.title.x = element_blank()) +
-  ggtitle ("Relative Abundance of Top 10 Fungal Orders")
+  ggtitle ("Relative Abundance of Top 10 Fungal Orders")+
+    theme(plot.title = element_text(face = "bold", hjust = 0.5))
 
 plot
 
 # library(svglite)
-# ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_rel_abund.png", plot=plot, width=9, height=7)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_rel_abund.png", plot=plot, width=7, height=5)
 ```
 
 
@@ -182,10 +183,11 @@ plot_month <- ggplot(ps2_month, aes(x = factor(Sample, levels = c("October", "Ja
   scale_fill_manual(values=c("Agaricales" ="#d00000", "Cantharellales" = "#ffba08", "Capnodiales" = "#cbff8c", "Chaetothyriales" = "#8fe388" , "Dothideales" ="#1b998b", "Pezizales" ="#3185fc", "Pleosporales" = "#a68fdd", "Sordariales" = "#46237a", "Tremellales" = "#ff7b9c", "Xylariales" = "#ff9b85", "Other" = "grey"), name = "Order") +
     theme_linedraw()+
     theme( axis.title.x = element_blank()) +
-  ggtitle ("Relative Abundance of Top 10 Fungal Orders by Month")
+  ggtitle ("Relative Abundance of Top 10 Fungal Orders by Month")+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
 
 plot_month
 
 # library(svglite)
-#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_rel_abund_month.png", plot=plot_month, width=9, height=7)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_rel_abund_month.png", plot=plot_month, width=7, height=5)
 ```

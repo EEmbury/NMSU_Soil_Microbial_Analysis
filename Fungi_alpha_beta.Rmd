@@ -139,10 +139,19 @@ richness <- estimate_richness(rare_phylo)
 anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
 summary(anova.sh.veg)
 
+sh.veg <- capture.output(summary(anova.sh.veg))
+write.table(sh.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fun_shannon_aov.txt", sep = ",", quote = FALSE, row.names = T)
+
 #post hoc
 tukey.sh <- TukeyHSD(anova.sh.veg)
 tukey.sh$`sample_data(rare_phylo)$Month`
 
+#Simpson
+anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
+summary(anova.sim.veg)
+
+sim.veg <- capture.output(summary(anova.sim.veg))
+write.table(sim.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fun_simpson_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 #check anova assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -170,9 +179,17 @@ abline(h=0, col = "red")
 alpha_veg_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
 alpha_veg_sh + geom_boxplot()
 
-alpha_mo_sh <- plot_richness(rare_phylo, x = "Month", measures = c("Shannon"))
-alpha_mo_sh + geom_boxplot()
+alpha_mo_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon", "Simpson"))
+fun_alpha <- alpha_mo_sh + 
+  geom_boxplot(show.legend = FALSE, aes(fill=Vegetation)) +
+  theme_linedraw()+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  ggtitle ("Fungal Alpha Diversity")+  #change title
+ scale_fill_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))
 
+fun_alpha
+
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_alpha.png", device = png, plot=fun_alpha, width=7, height=5)
 ```
 
 
@@ -204,17 +221,17 @@ ordBC <- ordinate(rare_phylo, method = "NMDS", distance = DistBC)
 #plot distances
 p <- plot_ordination(rare_phylo, ordBC, color = "Vegetation") + 
   geom_point(size = 3, aes(shape = Month)) +
-  ggtitle("Bacterial Community Composition Across Vegetation Types")+
+  ggtitle("Fungal Community Composition Across Vegetation Types")+
     theme_linedraw()+
   stat_ellipse()+
   scale_color_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))+
   scale_shape_discrete(name="Month")+
-  theme( text = element_text(size = 12, face = "bold"))
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
 
 p
 
 #library(svglite)
-#ggsave(file="beta.svg", plot=p, width=7, height=7)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_beta.png", plot=p, width=7, height=5)
 
 ```
 
@@ -225,7 +242,11 @@ p
 sampleDF <-  data.frame(sample_data(rare_phylo))
 
 # adonis : Analysis of variance using distance matrices
-adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF)
+adonis <- adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF)
+
+adonis_fun <- capture.output(adonis)
+
+write.table(adonis_fun, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fun_beta_adonis.txt", sep = ",", quote = FALSE, row.names = T)
 
 #### significance of vegetation ####
 library(pairwiseAdonis)

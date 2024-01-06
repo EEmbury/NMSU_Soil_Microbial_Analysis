@@ -118,30 +118,25 @@ https://rpubs.com/an-bui/vegan-cheat-sheet
 ```{r}
 library(vegan)
 
+#model for visualization
 mod_all <- cca(otu_all ~ `Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`, samdata)
 
-aov <- anova(mod_all, by="term", permutations=999)
-aov
+#model to assess vegetation interaction
+mod_all_veg <- cca(otu_all ~ Vegetation*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`), samdata)
 
-write.table(aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_cca_aov.txt", sep = ",", quote = FALSE, row.names = T)
+aov_veg <- anova(mod_all_veg, by="term", permutations=999)
+aov_veg
 
-
-# 
-# how <- how(nperm=499, plots = Plots(strata=samdata$month_veg))
-# anova(mod_all, permutations = how)
-# 
-# RsquareAdj(mod_all)
+#write.table(aov_veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_cca_veg_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 
-# ## Limited output of 'summary'
-# head(summary(mod), tail=2)
-# ## Scaling can be numeric or more user-friendly names
-# ## e.g. Hill's scaling for (C)CA
-# scrs <- scores(mod, scaling = "sites", hill = TRUE)
-# ## or correlation-based scores in PCA/RDA
-# scrs <- scores(rda(dune ~ A1 + Moisture + Management, dune.env),
-#                scaling = "sites", correlation = TRUE)
-# 
+#model to assess month interaction
+mod_all_month <- cca(otu_all ~ Month*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`), samdata)
+
+aov_month <- anova(mod_all_month, by="term", permutations=999)
+aov_month
+
+#write.table(aov_month, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_cca_month_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
 

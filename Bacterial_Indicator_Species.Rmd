@@ -154,31 +154,25 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 library(indicspecies)
 options(max.print=1000000)
 
-# month-vegetation
-bac.ISA <- multipatt(x = OTUdf,
-OTUdf_merge$month_veg,
-func = "r.g", 
-control = how(nperm=999))
-
-summary(bac.ISA)
-
-
 # vegetation
-bac.ISA.veg <- multipatt(x = OTUdf,
-OTUdf_merge$Vegetation,
-func = "r.g", 
-control = how(nperm=999))
+sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
+                 max.order = 2, 
+                 At=0.9, Bt=0.6)
+print(sc_g)
 
-summary(bac.ISA.veg)
+#sc2_g <- pruneindicators(sc_g, At=1, Bt=0.8, verbose=TRUE)
+#print(sc2_g)
 
 
-# month
-bac.ISA.month <- multipatt(x = OTUdf,
-OTUdf_merge$Month,
-func = "r.g", 
-control = how(nperm=999))
+sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
+                 max.order = 2, 
+                 At=0.9, Bt=0.88)
+print(sc_m)
 
-summary(bac.ISA.month)
+sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
+                 max.order = 2, 
+                 At=0.8, Bt=0.5)
+print(sc_mg)
 
 ```
 
@@ -189,77 +183,3 @@ summary(bac.ISA.month)
 
 
 - Morrison 2019 " We also used Indicator Species Analysis (ISA; De Cáceres and Legendre, 2009; De Cáceres et al., 2010) to test for fungal OTUs with ≥25% frequency that had large positive or negative responses to warming in frequency and relative abundance"
-
-```{r}
-library(indicspecies)
-
-
-##### indicator species grouped by vegetation ####
-
-bac.veg.ISA <- multipatt(x = OTUdf,
-cluster = OTUdf_merge$vegetation,
-duleg = TRUE, control = how(nperm=999))
-
-summary(bac.veg.ISA)
-
-
-#convert to data frame with sample id column
-indisp_veg <- as.data.frame(bac.veg.ISA$sign, keep.rownames = TRUE)
-indisp_veg <- tibble::rownames_to_column(indisp_veg, "sample.id")
-
-
-#merge taxa table with significant indicator species
-indisp_veg_taxa <- merge(OTU_taxa_merge, indisp_veg, by.y= "sample.id")
-
-#filter out non significant values
-library(dplyr)
-indisp_veg_taxa <- indisp_veg_taxa %>%
-filter(indisp_veg_taxa$p.value < .05) 
-
-
-##### indicator species grouped by month ####
-
-bac.month.ISA <- multipatt(x = OTUdf,
-cluster = OTUdf_merge$month,
-duleg = TRUE, control = how(nperm=999))
-
-#summary(bac.month.ISA)
-
-
-#convert to data frame with sample id column
-indisp_month <- as.data.frame(bac.month.ISA$sign, keep.rownames = TRUE)
-indisp_month <- tibble::rownames_to_column(indisp_month, "sample.id")
-
-
-#merge taxa table with significant indicator species
-indisp_month_taxa <- merge(OTU_taxa_merge, indisp_month, by.y= "sample.id")
-
-#filter out non significant values
-library(dplyr)
-indisp_month_taxa <- indisp_month_taxa %>%
-filter(indisp_month_taxa$p.value < .05) 
-
-
-
-##### indicator species grouped by month and vegetation ####
-
-bac.month.veg.ISA <- multipatt(x = OTUdf,
-cluster = OTUdf_merge$month_veg,
-duleg = TRUE, control = how(nperm=999))
-
-#summary(bac.month.veg.ISA)
-
-
-#filter out non significant values
-indisp_month_veg <- as.data.frame(bac.month.veg.ISA$sign, keep.rownames = TRUE)
-indisp_month_veg <- tibble::rownames_to_column(indisp_month_veg, "sample.id")
-
-
-#merge taxa table with significant indicator species
-indisp_month_veg_taxa <- merge(OTU_taxa_merge, indisp_month_veg, by.y= "sample.id")
-
-#filter out non significant values
-library(dplyr)
-indisp_month_veg_taxa <- indisp_month_veg_taxa %>%
-filter(indisp_month_veg_taxa$p.value < .05) 
-```
