@@ -175,29 +175,39 @@ sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesqui
                  At=1, Bt=0.65)
 print(sc_mg)
 
-# vegetation
-fun.ISA.veg <- multipatt(x = OTUdf,
-OTUdf_merge$Vegetation,
-func = "IndVal.g", 
-control = how(nperm=999), duleg = TRUE)
+```
 
-summary(fun.ISA.veg)
+```{r}
+#get taxa info
+
+mg_species <- as.data.frame(sc_mg$finalsplist)
+mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
+mg_species$vegetation <- "Grass-Mesquite"
+
+m_species <- as.data.frame(sc_m$finalsplist)
+m_species$sample.id <- m_species$`sc_m$finalsplist`
+m_species$vegetation <- "Mesquite"
+
+g_species <- as.data.frame(sc_g$finalsplist)
+g_species$sample.id <- g_species$`sc_g$finalsplist`
+g_species$vegetation <- "Grass"
+
+### get taxa info
+
+mg_indic_species <- merge(mg_species, taxadf, 
+                          by = 'sample.id', all = FALSE)
+
+#write.table(mg_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+
+m_indic_species <- merge(m_species, taxadf, 
+                          by = 'sample.id', all = FALSE)
 
 
-# month
-fun.ISA.month <- multipatt(x = OTUdf,
-OTUdf_merge$Month,
-func = "IndVal.g", 
-control = how(nperm=999), duleg = TRUE)
+#write.table(m_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
-summary(fun.ISA.month)
+g_indic_species <- merge(g_species, taxadf, 
+                          by = 'sample.id', all = FALSE)
 
-# month-vegetation
-fun.ISA <- multipatt(x = OTUdf,
-OTUdf_merge$month_veg,
-func = "IndVal.g", 
-control = how(nperm=999), duleg = TRUE)
-
-summary(fun.ISA)
+#write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```

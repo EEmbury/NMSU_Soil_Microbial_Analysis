@@ -160,19 +160,52 @@ sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass",
                  At=0.9, Bt=0.6)
 print(sc_g)
 
-#sc2_g <- pruneindicators(sc_g, At=1, Bt=0.8, verbose=TRUE)
-#print(sc2_g)
-
 
 sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
                  max.order = 2, 
                  At=0.9, Bt=0.88)
 print(sc_m)
 
+
 sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
                  max.order = 2, 
                  At=0.8, Bt=0.5)
 print(sc_mg)
+
+```
+
+```{r}
+#get taxa info
+
+mg_species <- as.data.frame(sc_mg$finalsplist)
+mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
+mg_species$vegetation <- "Grass-Mesquite"
+
+m_species <- as.data.frame(sc_m$finalsplist)
+m_species$sample.id <- m_species$`sc_m$finalsplist`
+m_species$vegetation <- "Mesquite"
+
+g_species <- as.data.frame(sc_g$finalsplist)
+g_species$sample.id <- g_species$`sc_g$finalsplist`
+g_species$vegetation <- "Grass"
+
+### get taxa info
+
+mg_indic_species <- merge(mg_species, taxadf, 
+                          by = 'sample.id', all = FALSE)
+
+#write.table(mg_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+
+m_indic_species <- merge(m_species, taxadf, 
+                          by = 'sample.id', all = FALSE)
+
+
+#write.table(m_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+
+g_indic_species <- merge(g_species, taxadf, 
+                          by = 'sample.id', all = FALSE)
+
+#write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
 

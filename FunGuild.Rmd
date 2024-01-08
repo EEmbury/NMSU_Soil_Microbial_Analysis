@@ -106,6 +106,9 @@ guild <- tax_table(as.matrix(funguild_taxa))
 
 tax_table(phylo_rm_cntrl) <- guild
 
+#keep only probable and highly probable
+phylo_probable = subset_taxa(phylo_rm_cntrl, Confidence.Ranking=="Probable" | Confidence.Ranking=="Highly Probable")
+
 ```
 
 
@@ -159,15 +162,191 @@ tax_table(phylo_rm_cntrl) <- guild
 ```{r}
 
 #get relative abundance
-phy_rel <- transform_sample_counts(phylo_rm_cntrl, function(x) x/sum(x))
+ps0 <- transform_sample_counts(phylo_probable, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Vegetation")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x)) %>%
+  psmelt()
 
-#remove unknowns
-ps.troph <- subset_taxa(phy_rel, Trophic.Mode !="-")
 
 
-p <- plot_bar(ps.troph, x = "Vegetation", fill = "Trophic.Mode") 
+funguild <- ggplot(ps2, aes(x = Sample, y = Abundance, fill = Trophic.Mode, color = Trophic.Mode))+
+  geom_bar( stat="identity") +
+  scale_fill_manual(values=c("Pathotroph" ="#d00000", "Pathotroph-Saprotroph" = "#ffba08", "Pathotroph-Saprotroph-Symbiotroph" = "#cbff8c", "Pathotroph-Symbiotroph" = "#1b998b" , "Saprotroph" ="#3185fc", "Saprotroph-Symbiotroph" ="#a68fdd", "Symbiotroph" = "#ff7b9c"), name = "Trophic Mode") +
+   scale_color_manual(values=c("Pathotroph" ="#d00000", "Pathotroph-Saprotroph" = "#ffba08", "Pathotroph-Saprotroph-Symbiotroph" = "#cbff8c", "Pathotroph-Symbiotroph" = "#1b998b" , "Saprotroph" ="#3185fc", "Saprotroph-Symbiotroph" ="#a68fdd", "Symbiotroph" = "#ff7b9c"), name = "Trophic Mode") +
+    theme_linedraw()+
+    theme( axis.title.x = element_blank()) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+  ggtitle ("Relative Abundance of Fungal Trophic Modes")
 
-p + geom_bar(aes(color=Trophic.Mode, fill=Trophic.Mode), stat="identity", position="stack") +
-  facet_wrap(~Month)
+funguild
+
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/funguild_vegetation.png", device = png, plot=funguild, width=7, height=5)
+
+
+#get relative abundance
+ps0 <- transform_sample_counts(phylo_probable, function(x) x / sum(x))
+ps1 <- merge_samples(ps0, "Month")
+ps2 <- transform_sample_counts(ps1, function(x) x / sum(x)) %>%
+  psmelt()
+
+
+
+funguild <- ggplot(ps2, aes(x = factor(Sample, levels = c("October", "January", "March", "May", "July")), y = Abundance, fill = Trophic.Mode, color = Trophic.Mode))+
+  geom_bar( stat="identity") +
+  scale_fill_manual(values=c("Pathotroph" ="#d00000", "Pathotroph-Saprotroph" = "#ffba08", "Pathotroph-Saprotroph-Symbiotroph" = "#cbff8c", "Pathotroph-Symbiotroph" = "#1b998b" , "Saprotroph" ="#3185fc", "Saprotroph-Symbiotroph" ="#a68fdd", "Symbiotroph" = "#ff7b9c"), name = "Trophic Mode") +
+   scale_color_manual(values=c("Pathotroph" ="#d00000", "Pathotroph-Saprotroph" = "#ffba08", "Pathotroph-Saprotroph-Symbiotroph" = "#cbff8c", "Pathotroph-Symbiotroph" = "#1b998b" , "Saprotroph" ="#3185fc", "Saprotroph-Symbiotroph" ="#a68fdd", "Symbiotroph" = "#ff7b9c"), name = "Trophic Mode") +
+    theme_linedraw()+
+    theme( axis.title.x = element_blank()) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+  ggtitle ("Relative Abundance of Fungal Trophic Modes")
+
+funguild
+
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/funguild_month.png", device = png, plot=funguild, width=7, height=5)
+```
+
+# DAA
+```{r}
+library(ANCOMBC)
+library(DT)
+tse = mia::makeTreeSummarizedExperimentFromPhyloseq(phylo_probable)
+
+set.seed(123)
+# It should be noted that we have set the number of bootstrap samples (B) equal 
+# to 10 in the 'trend_control' function for computational expediency. 
+# However, it is recommended that users utilize the default value of B, 
+# which is 100, or larger values for optimal performance.
+output = ancombc2(data = tse, assay_name = "counts", tax_level = "Trophic.Mode",
+                  fix_formula = "vegetation", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "vegetation", struc_zero = TRUE, neg_lb = TRUE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = TRUE,
+                  iter_control = list(tol = 1e-2, max_iter = 20, 
+                                      verbose = TRUE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100),
+                  trend_control = list(contrast = list(matrix(c(1, 0, -1, 1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE),
+                                                       matrix(c(-1, 0, 1, -1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE),
+                                                       matrix(c(1, 0, 1, -1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE)),
+                                       node = list(2, 2, 1),
+                                       solver = "ECOS",
+                                       B = 100))
+## From tutorial: "4.3 Structural zeros (taxon presence/absence)"
+tab_zero = output$zero_ind
+tab_zero %>%
+    datatable(caption = "The detection of structural zeros")
+
+## From tutorial: "5.5 ANCOM-BC2 multiple pairwise comparisons"
+
+res_pair = output$res_pair %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_pair[1:122, ] %>%
+    datatable(caption = "ANCOM-BC2 Multiple Pairwise Comparisons")
+
+## From tutorial: "5.4 ANCOM-BC2 global test"
+res_global = output$res_global %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_global[1:6, ] %>%
+    datatable(caption = "ANCOM-BC2 Global Test")
+
+## From tutorial: "5.6 ANCOM-BC2 Dunnett’s type of test"
+res_dunn = output$res_dunn %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_dunn[1:122, ] %>%
+    datatable(caption = "ANCOM-BC2 Dunnett's Type of Test")
+
+## From tutorial: "5.7 ANCOM-BC2 pattern analysis"
+res_trend = output$res_trend %>%
+    mutate_if(is.numeric, function(x) round(x, 2))
+res_trend[1:121, ] %>%
+    datatable(caption = "ANCOM-BC2 Pattern Analysis")
+
+## From tutorial: "6. Bias-corrected log abundances"
+bias_correct_log_table = output$bias_correct_log_table
+# By default, ANCOM-BC2 does not add pseudo-counts to zero counts, which can 
+# result in NAs in the bias-corrected log abundances. Users have the option to 
+# either leave the NAs as they are or replace them with zeros. 
+# This replacement is equivalent to adding pseudo-counts of ones to the zero counts. 
+bias_correct_log_table[is.na(bias_correct_log_table)] = 0
+# Show the first 6 samples
+round(bias_correct_log_table[, 1:121], 2) %>% 
+  datatable(caption = "Bias-corrected log abundances")
+
+## From tutorial "4.6 ANCOM-BC2 multiple pairwise comparisons"
+
+# The ANCOM-BC2 methodology for multiple pairwise comparisons is designed to identify taxa that exhibit differential abundance between any two groups within a set of three or more experimental groups, all while maintaining control over the mdFDR.
+# 
+# For instance, in our analysis focusing on the categories “lean”, “overweight”, and “obese”, the output provides: 1) log fold changes, 2) standard errors, 3) test statistics, 4) p-values, 5) adjusted p-values, 6) indicators denoting whether the taxon is differentially abundant (TRUE) or not (FALSE), and 7) indicators denoting whether the taxon passed the sensitivity analysis (TRUE) or not (FALSE).
+# 
+# In the subsequent heatmap, each cell represents a log fold-change (in natural log) value. Entries highlighted in color #e1bc29 have successfully passed the sensitivity analysis for pseudo-count addition.
+
+res_pair = output$res_pair
+
+df_fig_pair1 = res_pair %>%
+    dplyr::filter(diff_vegetationMesquite == 1 |
+                      diff_vegetationMesquite_grass == 1 | 
+                      diff_vegetationMesquite_grass_vegetationMesquite == 1) %>%
+    dplyr::mutate(M = ifelse(diff_vegetationMesquite == 1, 
+                                round(lfc_vegetationMesquite, 2), 0),
+                  MG = ifelse(diff_vegetationMesquite_grass == 1, 
+                                round(lfc_vegetationMesquite_grass, 2), 0),
+                  MGM = ifelse(diff_vegetationMesquite_grass_vegetationMesquite == 1, 
+                                round(lfc_vegetationMesquite_grass_vegetationMesquite, 2), 0)) %>%
+    tidyr::pivot_longer(cols = M:MGM, 
+                        names_to = "group", values_to = "value") %>%
+    dplyr::arrange(taxon)
+
+df_fig_pair2 = res_pair %>%
+    dplyr::filter(diff_vegetationMesquite == 1 |
+                      diff_vegetationMesquite_grass == 1 | 
+                      diff_vegetationMesquite_grass_vegetationMesquite == 1) %>%
+    dplyr::mutate(M = ifelse(passed_ss_vegetationMesquite == 1 & diff_vegetationMesquite == 1, 
+                                "black", "#46494c"),
+                  MG = ifelse(passed_ss_vegetationMesquite_grass == 1 & diff_vegetationMesquite_grass == 1, 
+                                "black", "#46494c"),
+                  MGM = ifelse(passed_ss_vegetationMesquite_grass_vegetationMesquite == 1 & diff_vegetationMesquite_grass_vegetationMesquite == 1, 
+                                "black", "#46494c")) %>%
+    tidyr::pivot_longer(cols = M:MGM, 
+                        names_to = "group", values_to = "color") %>%
+    dplyr::arrange(taxon)
+
+df_fig_pair = df_fig_pair1 %>%
+    dplyr::left_join(df_fig_pair2, by = c("taxon", "group"))
+
+df_fig_pair$group = recode(df_fig_pair$group, 
+                          `M` = "Mesquite - Grass",
+                          `MG` = "GM - Grass",
+                          `MGM` = "GM - Mesquite")
+df_fig_pair$group = factor(df_fig_pair$group, 
+                          levels = c("Mesquite - Grass",
+                                     "GM - Grass", 
+                                     "GM - Mesquite"))
+
+lo = floor(min(df_fig_pair$value))
+up = ceiling(max(df_fig_pair$value))
+mid = (lo + up)/2
+fig_pair = df_fig_pair %>%
+    ggplot(aes(x = group, y = taxon, fill = value)) + 
+    geom_tile(color = "black") +
+    scale_fill_gradient2(low = "#c1292e", high = "#679436", mid = "white", 
+                         na.value = "white", midpoint = 0, limit = c(lo, up),
+                         name = NULL) +
+    geom_text(aes(group, taxon, label = value, color = color), size = 4) +
+    scale_color_identity(guide = FALSE) +
+    labs(x = NULL, y = NULL, title = "Significant Trophic Mode Pairwise Log Fold Changes") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+fig_pair
+
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/funguild_daa.png", device = png, plot=fig_pair, width=7, height=5)
 
 ```

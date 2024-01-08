@@ -235,11 +235,11 @@ df_fig_pair2 = res_pair %>%
                       diff_vegetationMesquite_grass == 1 | 
                       diff_vegetationMesquite_grass_vegetationMesquite == 1) %>%
     dplyr::mutate(M = ifelse(passed_ss_vegetationMesquite == 1 & diff_vegetationMesquite == 1, 
-                                "#e1bc29", "black"),
+                                "white", "black"),
                   MG = ifelse(passed_ss_vegetationMesquite_grass == 1 & diff_vegetationMesquite_grass == 1, 
-                                "#e1bc29", "black"),
+                                "white", "black"),
                   MGM = ifelse(passed_ss_vegetationMesquite_grass_vegetationMesquite == 1 & diff_vegetationMesquite_grass_vegetationMesquite == 1, 
-                                "#e1bc29", "black")) %>%
+                                "white", "black")) %>%
     tidyr::pivot_longer(cols = M:MGM, 
                         names_to = "group", values_to = "color") %>%
     dplyr::arrange(taxon)
@@ -249,12 +249,12 @@ df_fig_pair = df_fig_pair1 %>%
 
 df_fig_pair$group = recode(df_fig_pair$group, 
                           `M` = "Mesquite - Grass",
-                          `MG` = "Ecotone - Grass",
-                          `MGM` = "Ecotone - Mesquite")
+                          `MG` = "GM - Grass",
+                          `MGM` = "GM - Mesquite")
 df_fig_pair$group = factor(df_fig_pair$group, 
                           levels = c("Mesquite - Grass",
-                                     "Ecotone - Grass", 
-                                     "Ecotone - Mesquite"))
+                                     "GM - Grass", 
+                                     "GM - Mesquite"))
 
 lo = floor(min(df_fig_pair$value))
 up = ceiling(max(df_fig_pair$value))
@@ -262,16 +262,17 @@ mid = (lo + up)/2
 fig_pair = df_fig_pair %>%
     ggplot(aes(x = group, y = taxon, fill = value)) + 
     geom_tile(color = "black") +
-    scale_fill_gradient2(low = "#679436", high = "#c1292e", mid = "white", 
+    scale_fill_gradient2(low = "#c1292e", high = "#679436", mid = "white", 
                          na.value = "white", midpoint = 0, limit = c(lo, up),
                          name = NULL) +
     geom_text(aes(group, taxon, label = value, color = color), size = 4) +
     scale_color_identity(guide = FALSE) +
-    labs(x = NULL, y = NULL, title = "Pairwise log fold changes") +
+    labs(x = NULL, y = NULL, title = "Pairwise log fold changes - Bacteria") +
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
 fig_pair
 
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_daa.png", device = png, plot=fig_pair, width=7, height=5)
 ```
 
 ```{r}

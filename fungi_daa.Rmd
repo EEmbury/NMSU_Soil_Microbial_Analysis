@@ -291,12 +291,12 @@ df_fig_pair = df_fig_pair1 %>%
 
 df_fig_pair$group = recode(df_fig_pair$group, 
                           M = "Mesquite - Grass",
-                          MG = "MG - Grass",
-                          MGM = "MG - Mesquite")
+                          MG = "GM - Grass",
+                          MGM = "GM - Mesquite")
 df_fig_pair$group = factor(df_fig_pair$group, 
                           levels = c("Mesquite - Grass",
-                                     "MG - Grass", 
-                                     "MG - Mesquite"))
+                                     "GM - Grass", 
+                                     "GM - Mesquite"))
 
 lo = floor(min(df_fig_pair$value))
 up = ceiling(max(df_fig_pair$value))

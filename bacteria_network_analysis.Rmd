@@ -103,6 +103,7 @@ phylo_rm_archaea
 
 ```
 
+
 ```{r}
 
 # library(NetCoMi)
@@ -400,7 +401,7 @@ phylo_rm_archaea
 
 
 # **build network from phyloseq object**
-- https://github.com/zdk123/SpiecEasi
+
 - https://psbweb05.psb.ugent.be/conet/microbialnetworks/spieceasi.php
 
 - https://rdrr.io/github/taowenmicro/ggClusterNet/man/corMicro.html (ggClusterNet)
@@ -431,19 +432,11 @@ library(microeco)
 library(magrittr)
 library(meconetcomp)
 
+devtools::install_github('lch14forever/BEEM-static')
+library(beemStatic)
 
-#convert to relative abundance 
-rel <- transform_sample_counts(phylo_rm_archaea, function(x) x/sum(x))
-
-#subset to grass
-grass_ps <- subset_samples(rel, vegetation=="Grass")
-# #subset to grass_mesquite
-grass_mesquite_ps <- subset_samples(rel, vegetation=="Mesquite_grass")
-# #subset to mesquite
-mesquite_ps <- subset_samples(rel, vegetation=="Mesquite")
-
-## cross-network analysis?
-rel_meco <- file2meco::phyloseq2meco(rel)
+## cross-network analysis
+rel_meco <- file2meco::phyloseq2meco(phylo_rm_archaea)
 
 all <- trans_network$new(dataset = rel_meco, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.0001)
 
@@ -459,10 +452,10 @@ tmp$sample_table %<>% subset(Vegetation == "Grass")
 # trim all files in the object
 tmp$tidy_dataset()
 # use filter_thres parameter to filter the feature with low relative abundance
-tmp <- trans_network$new(dataset = tmp, cor_method = "spearman", filter_thres = 0.0005)
+tmp <- trans_network$new(dataset = tmp, cor_method = "spearman", filter_thres = 0.0007)
 # COR_p_thres represents the p value threshold
 # COR_cut denotes the correlation coefficient threshold
-tmp$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+tmp$cal_network(network_method = "SpiecEasi")
 # put the network into the list
 soil_amp_network$Grass <- tmp
 
@@ -470,195 +463,229 @@ soil_amp_network$Grass <- tmp
 tmp <- clone(rel_meco)
 tmp$sample_table %<>% subset(Vegetation == "Mesquite")
 tmp$tidy_dataset()
-tmp <- trans_network$new(dataset = tmp, cor_method = "spearman", filter_thres = 0.0005)
-tmp$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+tmp <- trans_network$new(dataset = tmp, cor_method = "spearman", filter_thres = 0.0007)
+tmp$cal_network(network_method = "SpiecEasi")
 soil_amp_network$Mesquite <- tmp
+
 
 # select samples of "Grass_Mesquite" group
 tmp <- clone(rel_meco)
 tmp$sample_table %<>% subset(Vegetation == "Grass-Mesquite")
 tmp$tidy_dataset()
-tmp <- trans_network$new(dataset = tmp, cor_method = "spearman", filter_thres = 0.0005)
-tmp$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+tmp <- trans_network$new(dataset = tmp, cor_method = "spearman", filter_thres = 0.0007)
+tmp$cal_network(network_method = "SpiecEasi")
 soil_amp_network$GrassMesquite <- tmp
 
-soil_amp_network %<>% cal_module(undirected_method = "cluster_fast_greedy")
-tmp <- cal_network_attr(soil_amp_network)
-# tmp is a data.frame object
 
+#The function cal_module in meconetcomp package is designed to
+#partition modules for all the networks in the list.
+soil_amp_network %<>% cal_module(undirected_method = "cluster_fast_greedy")
+
+#we extracted all the res_network_attr tables in the networks and merged them into one final table by using #cal_network_attr function in meconetcomp package.
+tmp <- cal_network_attr(soil_amp_network)
+  # tmp is a data.frame object
+
+#The get_node_table and get_edge_table functions of meconetcomp package can be used to directly extract node and edge properties for all the networks. The return table is stored in each network object.
 soil_amp_network %<>% get_node_table(node_roles = TRUE) %>% get_edge_table
 
-# obtain the node distributions by searching the res_node_table in the object
+#The nodes in all the networks can be converted to a new microtable object by using the node_comp function of #meconetcomp package. Then, it is easy to analyse the nodes overlap with trans_venn class.
+
+  # obtain the node distributions by searching the res_node_table in the object
 tmp <- node_comp(soil_amp_network, property = "name")
-# obtain nodes intersection
+  # obtain nodes intersection
 tmp1 <- trans_venn$new(tmp, ratio = "numratio")
-g1 <- tmp1$plot_venn(fill_color = FALSE)
-ggsave("soil_amp_node_overlap.pdf", g1, width = 7, height = 6)
-# calculate jaccard distance to reflect the overall differences of networks
-tmp$cal_betadiv(method = "jaccard")
+g1 <- tmp1$plot_venn(fill_color = FALSE, color = c("#679436", "#c1292e", "#e1bc29"))
+g1
+ggsave("soil_amp_node_overlap_Bacteria.png", g1, width = 7, height = 6)
+  # calculate jaccard distance to reflect the overall differences of networks
+tmp$cal_betadiv()
 tmp$beta_diversity$jaccard
+tmp$beta_diversity$bray
 
-# get the edge distributions across networks
+  
+#The pipeline of studying edges overlap is similar with the above operations of nodes comparison. The edge_comp #function of meconetcomp package is used to convert edges distribution to a new microtable object.
+  # get the edge distributions across networks
 tmp <- edge_comp(soil_amp_network)
-# obtain edges intersection
+  # obtain edges intersection
 tmp1 <- trans_venn$new(tmp, ratio = "numratio")
-g1 <- tmp1$plot_venn(fill_color = FALSE)
-ggsave("soil_amp_edge_overlap.pdf", g1, width = 7, height = 6)
-# calculate jaccard distance
-tmp$cal_betadiv(method = "jaccard")
-tmp$beta_diversity$jaccard
+g1 <- tmp1$plot_venn(fill_color = FALSE, color = c("#679436", "#c1292e", "#e1bc29"))
+g1
+ggsave("soil_amp_edge_overlap_bacteria.png", g1, width = 7, height = 6)
 
-# first obtain edges distribution and intersection
+#Then we extracted the subset of edges according to the intersections of edges across networks, which can be accomplished with the subset_network function in meconetcomp package.
+  # first obtain edges distribution and intersection
 tmp <- edge_comp(soil_amp_network)
 tmp1 <- trans_venn$new(tmp)
-# convert intersection result to a microtable object
+  # convert intersection result to a microtable object
 tmp2 <- tmp1$trans_comm()
-# extract the intersection of all the three networks ("IW", "TW" and "CW")
-# please use colnames(tmp2$otu_table) to find the required name
+  # extract the intersection of all the three networks ("IW", "TW" and "CW")
+  # please use colnames(tmp2$otu_table) to find the required name
 Intersec_all <- subset_network(soil_amp_network, venn = tmp2, name = "Grass&Mesquite&GrassMesquite")
-# Intersec_all is a trans_network object
+  # Intersec_all is a trans_network object
 
-soil_amp_network_edgetax <- edge_tax_comp(soil_amp_network, taxrank = "Class", label = "+", rel = TRUE)
+#To know which taxa constitute the nodes in edges is important in understanding species co-occurrence patterns and answering ecological questions. In this part, as an instance, we used edge_tax_comp function of meconetcomp package to get the sums of node sources (at Phylum level) in the positive edges. In other words, how many linked nodes of positive edges come from different phyla or the same phyla. Then, to make the results comparable, the ratio was calculated with the positive edge number as denominator.
+
+soil_amp_network_edgetax <- edge_tax_comp(soil_amp_network, taxrank = "Phylum", label = "+", rel = TRUE)
 # filter the features with small number
 soil_amp_network_edgetax <- soil_amp_network_edgetax[apply(soil_amp_network_edgetax, 1, mean) > 0.01, ]
 # visualization
 g1 <- pheatmap::pheatmap(soil_amp_network_edgetax, display_numbers = TRUE)
-ggsave("soil_amp_edge_tax_comp.pdf", g1, width = 7, height = 7)
+g1
+ggsave("soil_amp_edge_tax_comp_bacteria.pdf", g1, width = 7, height = 7)
+
+
+
+
+### trying to plot ###
+
+soil_amp_network$Grass$save_network(filepath = "bacteria_grass_network.gexf")
+soil_amp_network$Mesquite$save_network(filepath = "bacteria_mesquite_network.gexf")
+soil_amp_network$GrassMesquite$save_network(filepath = "bacteria_grassmesquite_network.gexf")
+
+# calculate network attributes
+soil_amp_network$Grass$cal_network_attr()
+soil_amp_network$Grass$res_network_attr
+
+
+soil_amp_network$GrassMesquite$cal_network_attr()
+soil_amp_network$GrassMesquite$res_network_attr
+
+
+soil_amp_network$Mesquite$cal_network_attr()
+soil_amp_network$Mesquite$res_network_attr
 
 ```
 
 ```{r}
 
-# ######## Grass #########
-
-grass <- clone(rel_meco)
-grass$sample_table %<>% subset(Vegetation == "Grass")
-grass$tidy_dataset()
-grass <- trans_network$new(dataset = grass, cor_method = "spearman", filter_thres = 0.0005)
-grass$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
-
-
-grass$cal_module(method = "cluster_fast_greedy")
-
-# # calculate network attributes
-grass$cal_network_attr()
-grass$res_network_attr
- 
-# # get node properties
-grass$get_node_table(node_roles = TRUE)
-grass$res_node_table
-
-# # get edge properties
-grass$get_edge_table()
-grass$res_edge_table 
-
-grass$get_adjacency_matrix()
-grass$res_adjacency_matrix
-
-grass$plot_taxa_roles(use_type = 1)
-
-# # plot node roles with phylum information
- grass$plot_taxa_roles(use_type = 2)
-
- grass$cal_eigen()
- 
- 
- # use_col is used to select a column of t1$res_node_table
-tmp <- grass$trans_comm(use_col = "module", abundance = FALSE)
-tmp
-tmp$otu_table[tmp$otu_table > 0] <- 1
-tmp$tidy_dataset()
-tmp$cal_abund()
-tmp2 <- trans_abund$new(tmp, taxrank = "Phylum", ntaxa = 10)
-tmp2$data_abund$Sample %<>% factor(., levels = rownames(tmp$sample_table))
-tmp2$plot_line(xtext_angle = 30, color_values = RColorBrewer::brewer.pal(12, "Paired")) + ylab("OTUs ratio (%)")
-
- 
-library(chorddiag)
-grass$cal_sum_links(taxa_level = "Phylum")
-grass$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
-
-grass_plot
-
-```
-
-```{r}
-# ######## Grass-mesquite #########
-gm <- clone(rel_meco)
-gm$sample_table %<>% subset(Vegetation == "Grass-Mesquite")
-gm$tidy_dataset()
-gm <- trans_network$new(dataset = gm, cor_method = "spearman", filter_thres = 0.0005)
-gm$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
-
-gm$cal_module(method = "cluster_fast_greedy")
-
-# # calculate network attributes
-gm$cal_network_attr()
-gm$res_network_attr
-
-# # get node properties
-gm$get_node_table(node_roles = TRUE)
-gm$res_node_table
-
-# # get edge properties
-gm$get_edge_table()
-gm$res_edge_table 
- 
-gm$get_adjacency_matrix()
-gm$res_adjacency_matrix
-
-gm$plot_taxa_roles(use_type = 1)
-
-# # plot node roles with phylum information
-gm$plot_taxa_roles(use_type = 2)
-
-gm$cal_eigen()
-
-library(chorddiag)
-gm$cal_sum_links(taxa_level = "Order")
-gm_plot <- gm$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
-gm_plot
+# # ######## Grass #########
+# 
+# grass <- clone(rel_meco)
+# grass$sample_table %<>% subset(Vegetation == "Grass")
+# grass$tidy_dataset()
+# grass <- trans_network$new(dataset = grass, cor_method = "spearman", filter_thres = 0.0005)
+# grass$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+# 
+# 
+# grass$cal_module(method = "cluster_fast_greedy")
+# 
+# # # calculate network attributes
+# grass$cal_network_attr()
+# grass$res_network_attr
+#  
+# # # get node properties
+# grass$get_node_table(node_roles = TRUE)
+# grass$res_node_table
+# 
+# # # get edge properties
+# grass$get_edge_table()
+# grass$res_edge_table 
+# 
+# grass$get_adjacency_matrix()
+# grass$res_adjacency_matrix
+# 
+# grass$plot_taxa_roles(use_type = 1)
+# 
+# # # plot node roles with phylum information
+#  grass$plot_taxa_roles(use_type = 2)
+# 
+#  grass$cal_eigen()
+#  
+#  
+#  # use_col is used to select a column of t1$res_node_table
+# tmp <- grass$trans_comm(use_col = "module", abundance = FALSE)
+# tmp
+# tmp$otu_table[tmp$otu_table > 0] <- 1
+# tmp$tidy_dataset()
+# tmp$cal_abund()
+# tmp2 <- trans_abund$new(tmp, taxrank = "Phylum", ntaxa = 10)
+# tmp2$data_abund$Sample %<>% factor(., levels = rownames(tmp$sample_table))
+# tmp2$plot_line(xtext_angle = 30, color_values = RColorBrewer::brewer.pal(12, "Paired")) + ylab("OTUs ratio (%)")
+# 
+#  
+# library(chorddiag)
+# grass$cal_sum_links(taxa_level = "Phylum")
+# grass$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+# 
+# ```
+# 
+# ```{r}
+# # ######## Grass-mesquite #########
+# gm <- clone(rel_meco)
+# gm$sample_table %<>% subset(Vegetation == "Grass-Mesquite")
+# gm$tidy_dataset()
+# gm <- trans_network$new(dataset = gm, cor_method = "spearman", filter_thres = 0.0005)
+# gm$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+# 
+# gm$cal_module(method = "cluster_fast_greedy")
+# 
+# # # calculate network attributes
+# gm$cal_network_attr()
+# gm$res_network_attr
+# 
+# # # get node properties
+# gm$get_node_table(node_roles = TRUE)
+# gm$res_node_table
+# 
+# # # get edge properties
+# gm$get_edge_table()
+# gm$res_edge_table 
+#  
+# gm$get_adjacency_matrix()
+# gm$res_adjacency_matrix
+# 
+# gm$plot_taxa_roles(use_type = 1)
+# 
+# # # plot node roles with phylum information
+# gm$plot_taxa_roles(use_type = 2)
+# 
+# gm$cal_eigen()
+# 
+# library(chorddiag)
+# gm$cal_sum_links(taxa_level = "Order")
+# gm_plot <- gm$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+# gm_plot
 ```
 
 
 ```{r}
-# ######## mesquite #########
-
-
-# select samples of "Mesquite" group
-mesq <- clone(rel_meco)
-mesq$sample_table %<>% subset(Vegetation == "Mesquite")
-mesq$tidy_dataset()
-mesq <- trans_network$new(dataset = mesq, cor_method = "spearman", filter_thres = 0.0005)
-mesq$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
-
-mesq$cal_module(method = "cluster_fast_greedy")
-
-
-# # calculate network attributes
-mesq$cal_network_attr()
-mesq$res_network_attr
-
-# # get node properties
-mesq$get_node_table(node_roles = TRUE)
-mesq$res_node_table
-
-# # get edge properties
-mesq$get_edge_table()
-mesq$res_edge_table 
- 
-mesq$get_adjacency_matrix()
-mesq$res_adjacency_matrix
- 
-mesq$plot_taxa_roles(use_type = 1)
-
-# # plot node roles with phylum information
-mesq$plot_taxa_roles(use_type = 2)
-
-mesq$cal_eigen()
-
-library(chorddiag)
-mesq$cal_sum_links(taxa_level = "Class")
-mesq_plot <- mesq$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
-mesq_plot
+# # ######## mesquite #########
+# 
+# 
+# # select samples of "Mesquite" group
+# mesq <- clone(rel_meco)
+# mesq$sample_table %<>% subset(Vegetation == "Mesquite")
+# mesq$tidy_dataset()
+# mesq <- trans_network$new(dataset = mesq, cor_method = "spearman", filter_thres = 0.0005)
+# mesq$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+# 
+# mesq$cal_module(method = "cluster_fast_greedy")
+# 
+# 
+# # # calculate network attributes
+# mesq$cal_network_attr()
+# mesq$res_network_attr
+# 
+# # # get node properties
+# mesq$get_node_table(node_roles = TRUE)
+# mesq$res_node_table
+# 
+# # # get edge properties
+# mesq$get_edge_table()
+# mesq$res_edge_table 
+#  
+# mesq$get_adjacency_matrix()
+# mesq$res_adjacency_matrix
+#  
+# mesq$plot_taxa_roles(use_type = 1)
+# 
+# # # plot node roles with phylum information
+# mesq$plot_taxa_roles(use_type = 2)
+# 
+# mesq$cal_eigen()
+# 
+# library(chorddiag)
+# mesq$cal_sum_links(taxa_level = "Class")
+# mesq_plot <- mesq$plot_sum_links(plot_pos = TRUE, plot_num = 10, color_values = RColorBrewer::brewer.pal(10, "Paired"))
+# mesq_plot
 ```
