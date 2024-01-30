@@ -116,10 +116,12 @@ ll_tuk <- TukeyHSD(ll_aov)
 # decomp x vegetation
 tuk_veg <- ll_tuk$Vegetation
 write.table(tuk_veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/leaf_litter_tukey_veg.txt", sep = ",", quote = FALSE, row.names = T)
+tuk_veg
 
 # decomp x collection period
 col_perd <- ll_tuk$Collection_period
 write.table(col_perd, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/leaf_litter_tukey_coll_period.txt", sep = ",", quote = FALSE, row.names = T)
+col_perd
 
 # decomp x vegetation*veg
 tuk_cp_veg <- as.data.frame(ll_tuk$`Vegetation:Collection_period`)

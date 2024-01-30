@@ -102,13 +102,13 @@ row.names.remove <- c("Control1", "Control2")
 
 sam_data <- sam[!(row.names(sam) %in% row.names.remove), ]
 
-samdata <- sam_data[-c(2:10, 13, 14, 16, 17)]
+samdata <- sam_data[-c(2,3 , 7:10, 13, 14, 16, 17)]
 
 df <- rownames_to_column(otu_all, var = "sample.id")
 
 merged <- merge(df, samdata, "sample.id")
 
-colnames(samdata) <- c("sample.id", "Soil Temp", "Soil pH", "C:N", "Avg. Air Temp", "Avg. Humid.", "Avg. ppt", "month_veg", "Vegetation", "Month")
+colnames(samdata) <- c("sample.id","label", "Proximity1", "Proximity","Soil Temp", "Soil pH", "C:N", "Avg. Air Temp", "Avg. Humid.", "Avg. ppt", "month_veg", "Vegetation", "Month")
 ```
 
 #significance testing of cca plot (https://cran.r-project.org/web/packages/vegan/vignettes/intro-vegan.pdf) https://fromthebottomoftheheap.net/slides/advanced-vegan-webinar-2020/advanced-vegan#58
@@ -122,19 +122,25 @@ library(vegan)
 mod_all <- cca(otu_all ~ `Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`, samdata)
 
 #model to assess vegetation interaction
-mod_all_veg <- cca(otu_all ~ Vegetation*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`), samdata)
+mod_all_veg <- cca(otu_all ~ Vegetation*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt` + Proximity1)+ Condition(label), samdata)
 
-aov_veg <- anova(mod_all_veg, by="term", permutations=999)
+aov_veg <- anova.cca(mod_all_veg, by="term", permutations=999)
 aov_veg
+
 
 #write.table(aov_veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_cca_veg_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 
 #model to assess month interaction
-mod_all_month <- cca(otu_all ~ Month*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`), samdata)
+mod_all_month <- cca(otu_all ~ Month*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt` + Proximity1) + + Condition(label), samdata)
 
 aov_month <- anova(mod_all_month, by="term", permutations=999)
 aov_month
+
+mod_all_prox <- cca(otu_all ~ Proximity1*(`Soil Temp` + `Soil pH` + `C:N` + `Avg. Air Temp` + `Avg. Humid.` + `Avg. ppt`), samdata)
+
+aov_prox <- anova(mod_all_prox, by="term", permutations=999)
+aov_prox
 
 #write.table(aov_month, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/fungi_cca_month_aov.txt", sep = ",", quote = FALSE, row.names = T)
 

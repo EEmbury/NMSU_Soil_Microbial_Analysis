@@ -195,7 +195,7 @@ tmp <- node_comp(soil_amp_network, property = "name")
 tmp1 <- trans_venn$new(tmp, ratio = "numratio")
 g1 <- tmp1$plot_venn(fill_color = FALSE, color = c("#679436", "#c1292e", "#e1bc29"))
 g1
-ggsave("soil_amp_node_overlap_fungi.png", g1, width = 7, height = 6)
+#ggsave("soil_amp_node_overlap_fungi.png", g1, width = 7, height = 6)
   # calculate jaccard distance to reflect the overall differences of networks
 tmp$cal_betadiv()
 tmp$beta_diversity$jaccard
@@ -209,7 +209,11 @@ tmp <- edge_comp(soil_amp_network)
 tmp1 <- trans_venn$new(tmp, ratio = "numratio")
 g1 <- tmp1$plot_venn(fill_color = FALSE, color = c("#679436", "#c1292e", "#e1bc29"))
 g1
-ggsave("soil_amp_edge_overlap_fungi.png", g1, width = 7, height = 6)
+#ggsave("soil_amp_edge_overlap_fungi.png", g1, width = 7, height = 6)
+
+tmp$cal_betadiv()
+tmp$beta_diversity$jaccard
+tmp$beta_diversity$bray
 
 #Then we extracted the subset of edges according to the intersections of edges across networks, which can be accomplished with the subset_network function in meconetcomp package.
   # first obtain edges distribution and intersection
@@ -230,7 +234,7 @@ soil_amp_network_edgetax <- soil_amp_network_edgetax[apply(soil_amp_network_edge
 # visualization
 g1 <- pheatmap::pheatmap(soil_amp_network_edgetax, display_numbers = TRUE)
 g1
-ggsave("soil_amp_edge_tax_comp_fungi.png", g1, width = 7, height = 7)
+#ggsave("soil_amp_edge_tax_comp_fungi.png", g1, width = 7, height = 7)
 
 
 

@@ -512,6 +512,10 @@ g1 <- tmp1$plot_venn(fill_color = FALSE, color = c("#679436", "#c1292e", "#e1bc2
 g1
 ggsave("soil_amp_edge_overlap_bacteria.png", g1, width = 7, height = 6)
 
+tmp$cal_betadiv()
+tmp$beta_diversity$jaccard
+tmp$beta_diversity$bray
+
 #Then we extracted the subset of edges according to the intersections of edges across networks, which can be accomplished with the subset_network function in meconetcomp package.
   # first obtain edges distribution and intersection
 tmp <- edge_comp(soil_amp_network)

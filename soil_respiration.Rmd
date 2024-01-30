@@ -40,7 +40,7 @@ MG2_c3 -- resp = -466.1359402
 ```{r}
 
 
-my_data <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/respiration/CO2_adjusted_w_start.csv")
+my_data <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/respiration/CO2_final_jan_2024.csv")
 
 my_data$veg_abrev <- factor(my_data$Vegetation, levels = c("Grass", "Grass-Mesquite", "Mesquite"), 
                   labels = c("G", "T", "M")) 
@@ -55,12 +55,10 @@ my_data$veg_abrev <- factor(my_data$Vegetation, levels = c("Grass", "Grass-Mesqu
 library(ggplot2)
 library(ggpubr)
 
-my_data$facet = factor(my_data$Month, levels = c("March", "May", "July"))
-
-p = ggplot(my_data, aes(x=Vegetation, y=Respiration))  + #plot CO2 by vegetation type
+p = ggplot(my_data, aes(x=Vegetation, y=CO2))  + #plot CO2 by vegetation type
   geom_boxplot(lwd=.8, aes(fill=veg_abrev))  + # add box plot
-  theme_bw()+ # remove grey background
-  facet_wrap(~factor(my_data$Month, levels = c("March", "May", "July")))+ #group by month
+    theme_linedraw()+ # remove grey background
+  facet_grid(~factor(my_data$Month, levels = c("January","March", "May", "July")))+ #group by month
   labs(y=expression(paste(CO[2], ~g^{-1}, "of biomass ", h^{-1})))+ # change y axis label
   ggtitle (expression(paste(CO[2], " Measurements Across Seasons and Vegetation")))+
   scale_fill_manual(values=c("M" ="#c1292e", "G" = "#679436", "T" = "#e1bc29"))+ 
@@ -70,9 +68,98 @@ p = ggplot(my_data, aes(x=Vegetation, y=Respiration))  + #plot CO2 by vegetation
 
 p 
 
+
+
+b = ggplot(my_data, aes(x=Month, y=CO2))  + #plot CO2 by vegetation type
+  geom_boxplot(lwd=.8, aes(fill=Month))  + # add box plot
+    theme_linedraw()+ # remove grey background
+  facet_grid(~factor(my_data$Vegetation, levels = c("Grass","Grass-Mesquite", "Mesquite")))+ #group by month
+  labs(y=expression(paste(CO[2], ~g^{-1}, "of biomass ", h^{-1})))+ # change y axis label
+  ggtitle (expression(paste(CO[2], " Measurements Across Seasons and Vegetation")))+
+ scale_fill_manual(values=c( "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month")
+  theme( text = element_text(size = 15), legend.position = "none", axis.title.x=element_blank(), axis.text.x = element_text(angle=35, vjust = 0.95, hjust =0.95))
+
+  
+
+b 
+
 ```
 
-```{r add_signif}
+```{r anova}
+library(dplyr)
+library(rstatix)
+
+resp_aov <- aov(CO2 ~ Month*Vegetation, data = my_data)
+summary(resp_aov)
+
+#check assumptions
+
+normality<-my_data %>%
+group_by(Month,Vegetation) %>%
+shapiro_test(CO2)
+data.frame(normality)
+
+
+
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(resp_aov$residuals) #normal q-q plot, tests normality
+qqline(resp_aov$residuals, col = "red") #line of fit on q-q plot
+plot(resp_aov$fitted.values, resp_aov$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+
+
+#fungal data does not meet normallity assumptions, must log transform for anova
+resp2 <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/respiration/CO2_final_jan_2024.csv")
+resp2$CO2<- sqrt(resp2$CO2)
+resp2<- resp2 %>% 
+  filter_at(vars(CO2), all_vars(!is.infinite(.)))
+
+resp_aov2 <- aov(CO2 ~ Month*Vegetation, data = resp2)
+summary(resp_aov2)
+
+
+#2. Normality Assumption
+#  Shapiro-Wilk’s test
+normality<-resp2 %>%
+group_by(Month,Vegetation) %>%
+shapiro_test(CO2)
+data.frame(normality)
+
+
+ggqqplot(my_data, "CO2", ggtheme = theme_bw()) +
+  facet_grid(Vegetation ~ Month, labeller = "label_both")
+
+#check assumptions
+par(mfrow = c(1,2)) #puts the plots next to each other
+qqnorm(resp_aov2$residuals) #normal q-q plot, tests normality
+qqline(resp_aov2$residuals, col = "red") #line of fit on q-q plot
+plot(resp_aov2$fitted.values, resp_aov2$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+     ylab = "Residuals") #residuals vs. fitted, test variance
+abline(h=0, col = "red") 
+# post-hoc
+
+tuk <- TukeyHSD(resp_aov2)
+
+#month
+tuk$Month
+
+#vegetation
+tuk$Vegetation
+
+#month x veg
+tuk_mon_veg <- as.data.frame(tuk$`Month:Vegetation`)
+
+library(dplyr)
+tuk_mon_veg_signif <- tuk_mon_veg %>%
+filter(tuk_mon_veg$`p adj` < .05) 
+
+tuk_mon_veg_signif
+
+#write.table(tuk_mon_veg_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/respiration_veg_month_tuk.txt", sep = ",", quote = FALSE, row.names = T)
+```
+
+#```{r add_signif}
 library(ggprism)
 library(dplyr)
 library(tidyverse)

@@ -193,18 +193,18 @@ g_species$vegetation <- "Grass"
 
 mg_indic_species <- merge(mg_species, taxadf, 
                           by = 'sample.id', all = FALSE)
-
+mg_indic_species
 #write.table(mg_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 m_indic_species <- merge(m_species, taxadf, 
                           by = 'sample.id', all = FALSE)
-
+m_indic_species
 
 #write.table(m_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 g_indic_species <- merge(g_species, taxadf, 
                           by = 'sample.id', all = FALSE)
-
+g_indic_species
 #write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```

@@ -69,8 +69,9 @@ PLFA_plot_fun <- ggplot(PLFA_fun,
                 y = Total_Percent_Biomass))+
   geom_boxplot(show.legend = FALSE, aes(fill=Month))+
   facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
- scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 60))+ # change y-axis to percentage
+ scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 40))+ # change y-axis to percentage
   theme_linedraw()+
+  stat_summary(fun=mean, geom="point", shape=18, color="darkgray") +
  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
        axis.title.y = element_blank()) + 
   #ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
@@ -78,6 +79,7 @@ PLFA_plot_fun <- ggplot(PLFA_fun,
          strip.text.x = element_blank()) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
+PLFA_plot_fun
 ```
 
 # **Bacterial Plot**
@@ -108,6 +110,7 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
   facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
   theme_linedraw()+
+    stat_summary(fun=mean, geom="point", shape=18, color="darkgray") +
  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
        axis.title.y = element_blank()) + 
   #ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
@@ -121,12 +124,86 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
 
 
 # **Fungal Stats**
+```{r repeated_measures_anova_fun}
+library(dplyr)
+library(tidyverse)
+library(rstatix)
+library(ggpubr)
+library(plyr)
+
+
+plfa_aov_fun <- anova_test(data = PLFA_fun, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Samp/(Month)))
+plfa_aov_fun
+
+
+#check assumptions
+
+#1. No significant outlier
+outlier<-PLFA_fun %>%
+group_by(Month,Veg_abrev) %>%
+identify_outliers(Total_Percent_Biomass)
+data.frame(outlier)
+
+#	MG2_c_Mar is an extreme outlier
+  # will remove and re-run 
+
+row.names.remove <- c("114")
+PLFA_fun_rm_outlier <- PLFA_fun[!(row.names(PLFA_fun) %in% row.names.remove), ]
+
+outlier<-PLFA_fun_rm_outlier %>%
+group_by(Month,Veg_abrev) %>%
+identify_outliers(Total_Percent_Biomass)
+data.frame(outlier)
+
+plfa_aov_fun_ <- anova_test(data = PLFA_fun_rm_outlier, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Samp/(Month)))
+plfa_aov_fun_
+
+get_anova_table(plfa_aov_fun_, correction = "GG")
+
+#2. Normality Assumption
+#  Shapiro-Wilk’s test
+normality<-PLFA_fun_rm_outlier %>%
+group_by(Month,Veg_abrev) %>%
+shapiro_test(Total_Percent_Biomass)
+data.frame(normality)
+
+ggqqplot(PLFA_fun_rm_outlier, "Total_Percent_Biomass", ggtheme = theme_bw()) +
+  facet_grid(Veg_abrev ~ Month, labeller = "label_both")
+
+#July mesquite was significantly different in the Shapiro-Wilk’s test, but looks normal in the graph
+
+#3. Assumption of Sphericity
+  # assessed in the anova_test function
+
+
+#### post-hoc assessments
+library(lmerTest)
+library(lme4)
+library(multcomp)
+library(emmeans)
+
+get_anova_table(plfa_aov_fun_, correction = "GG")
+
+m <- lme4::lmer(Total_Percent_Biomass ~ Month*Veg_abrev + (1|Samp), data = PLFA_fun_rm_outlier)
+summary(m)
+emmeans <- emmeans(m, ~Veg_abrev)
+pairs(emmeans, adjust = "Tukey")
+
+emmeans <- emmeans(m, ~Month)
+pairs(emmeans, adjust = "Tukey")
+
+emmeans <- emmeans(m, ~Month | Veg_abrev)
+pairs(emmeans, adjust = "Tukey")
+
+```
+
 ```{r plfa_statistics_fungi}
 
 # anova model of biomass by vegetation and month
   #month = month
   #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
 mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev)
+
 
 #check assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -146,8 +223,12 @@ PLFA_fun2 <- PLFA_fun2 %>%
   filter_at(vars(Total_Percent_Biomass), all_vars(!is.infinite(.)))
 
 
-
 mod.plfa.fun2 <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev)
+
+#assess how proximity to vegetation influences biomass
+proximity <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev*PLFA_fun2$Spatial_ID)
+summary(proximity)
+
 
 #check assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -212,6 +293,78 @@ write.table(fun_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microb
 ```
 
 # **Bacterial Stats**
+
+```{r repeated_measures_anova_bac}
+library(dplyr)
+library(tidyverse)
+library(rstatix)
+library(ggpubr)
+library(plyr)
+
+
+#mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev + Error(PLFA_fun$Samp))
+#summary(mod.plfa.fun)
+        
+plfa_aov_bac <- anova_test(data = PLFA_bac, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Site/(Month)))
+plfa_aov_bac
+
+
+#check assumptions
+
+#1. No significant outlier
+outlier<-PLFA_bac %>%
+group_by(Month,Veg_abrev) %>%
+identify_outliers(Total_Percent_Biomass)
+data.frame(outlier)
+
+# M1_c_Oct is an extreme outlier, will remove
+row.names.remove <- c("48")
+PLFA_bac_rm_outlier <- PLFA_bac[!(row.names(PLFA_bac) %in% row.names.remove), ]
+
+
+outlier<-PLFA_bac_rm_outlier %>%
+group_by(Month,Veg_abrev) %>%
+identify_outliers(Total_Percent_Biomass)
+data.frame(outlier)
+
+plfa_aov_bac <- anova_test(data = PLFA_bac_rm_outlier, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Site/(Month)))
+plfa_aov_bac
+
+#2. Normality Assumption
+#  Shapiro-Wilk’s test
+normality<-PLFA_bac_rm_outlier %>%
+group_by(Month,Veg_abrev) %>%
+shapiro_test(Total_Percent_Biomass)
+data.frame(normality)
+
+ggqqplot(PLFA_bac_rm_outlier, "Total_Percent_Biomass", ggtheme = theme_bw()) +
+  facet_grid(Veg_abrev ~ Month, labeller = "label_both")
+
+#3. Assumption of Sphericity
+  # assessed in the anova_test function
+
+
+#### post-hoc assessments
+library(lmerTest)
+library(lme4)
+library(multcomp)
+library(emmeans)
+
+get_anova_table(plfa_aov_bac, correction = "GG")
+
+m <- lme4::lmer(Total_Percent_Biomass ~ Month*Veg_abrev + (1|Site), data = PLFA_bac_rm_outlier)
+summary(m)
+emmeans <- emmeans(m, ~Veg_abrev)
+pairs(emmeans, adjust = "Tukey")
+
+emmeans <- emmeans(m, ~Month)
+pairs(emmeans, adjust = "Tukey")
+
+emmeans <- emmeans(m, ~Month | Veg_abrev)
+pairs(emmeans, adjust = "Tukey")
+
+```
+
 ```{r plfa_statistics_bacterial}
 
 
@@ -219,6 +372,10 @@ write.table(fun_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microb
   #month = month
   #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
 mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev)
+
+#assess how proximity to vegetation influences biomass
+proximity <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev*PLFA_bac$Spatial_ID)
+summary(proximity)
 
 #summary of anova results
 summary(mod.plfa.bac)
@@ -337,9 +494,9 @@ library(dplyr)
 
 # select only the necessary columns from the data frame 
 grouped_for_plot_fun <- fun_stat %>%
-  select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
+  #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
    mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
-  as.tibble()
+  as_tibble()
   
 
 # manually add y-position for each p-value
@@ -407,9 +564,9 @@ library(dplyr)
 
 # select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
 grouped_for_plot_bac <- bac_stat %>%
-  select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
+  #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
   mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
-  as.tibble()
+  as_tibble()
   
 #manually add y-position for each p-value
 grouped_for_plot_bac <- grouped_for_plot_bac %>%
@@ -439,8 +596,27 @@ final <- annotate_figure(figure,
 final
 
 library(svglite)
-ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
 ```
+
+```{r}
+# plots with no signif bars
+
+figure <- ggarrange(PLFA_plot_bac, PLFA_plot_fun, 
+          ncol = 1, nrow = 2)
+
+final <- annotate_figure(figure,
+              top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
+               left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90)
+              )
+final
+
+library(svglite)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa_no_signif.png", plot=final, width=9, height=7)
+```
+
+
+
 
 #**Fungi to bacteria**
 
@@ -488,7 +664,85 @@ plot(plfa_ratio_aov$fitted.values, plfa_ratio_aov$residuals, main = "Residuals v
 abline(h=0, col = "red") 
 
 
+tuk.ratio<- TukeyHSD(plfa_ratio_aov)
+
+tuk.ratio$`ratio$Month`
+tuk.ratio$`ratio$Vegetation`
+veg_mon <- as.data.frame(tuk.ratio$`ratio$Vegetation:ratio$Month`)
+
+library(dplyr)
+#filter for significant values
+veg_mon_signif <- veg_mon %>%
+filter(veg_mon$`p adj` < .05) 
+
+#view signif
+veg_mon_signif
+
+#write.table(veg_mon_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fun_to_bac_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
+
 ```
+
+```{r repeated_measures_anova_ratio}
+library(dplyr)
+library(tidyverse)
+library(rstatix)
+library(ggpubr)
+library(plyr)
+
+
+plfa_aov_ratio <- anova_test(data = ratio, fungi_to_bacteria ~ Month*Vegetation + Error(Samp/(Month)))
+plfa_aov_ratio
+
+
+#check assumptions
+
+#1. No significant outlier
+outlier<-ratio %>%
+group_by(Month,Vegetation) %>%
+identify_outliers(fungi_to_bacteria)
+data.frame(outlier)
+
+#no extreme outliers
+
+get_anova_table(plfa_aov_ratio, correction = "GG")
+
+#2. Normality Assumption
+#  Shapiro-Wilk’s test
+normality<-ratio %>%
+group_by(Month,Vegetation) %>%
+shapiro_test(fungi_to_bacteria)
+data.frame(normality)
+
+ggqqplot(PLFA_fun_rm_outlier, "Total_Percent_Biomass", ggtheme = theme_bw()) +
+  facet_grid(Veg_abrev ~ Month, labeller = "label_both")
+
+
+#3. Assumption of Sphericity
+  # assessed in the anova_test function
+
+
+#### post-hoc assessments
+library(lmerTest)
+library(lme4)
+library(multcomp)
+library(emmeans)
+
+
+
+m <- lme4::lmer(fungi_to_bacteria ~ Month*Vegetation + (1|Samp), data = ratio)
+summary(m)
+emmeans <- emmeans(m, ~Vegetation)
+pairs(emmeans, adjust = "Tukey")
+
+emmeans <- emmeans(m, ~Month)
+pairs(emmeans, adjust = "Tukey")
+
+emmeans <- emmeans(m, ~Month | Vegetation)
+pairs(emmeans, adjust = "Tukey")
+
+
+```
+
 
 ```{r session_info}
 library(devtools)

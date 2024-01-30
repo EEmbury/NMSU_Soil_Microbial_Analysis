@@ -144,23 +144,31 @@ rare_phylo <- phyloseq(otu_table(rare, taxa_are_rows = FALSE),
 richness <- estimate_richness(rare_phylo)
 
 #Shannon
-anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
+anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity1)
 summary(anova.sh.veg)
 
 sh.veg <- capture.output(summary(anova.sh.veg))
 #write.table(sh.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_shannon_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 #Simpson
-anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
+anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity1)
 summary(anova.sim.veg)
 
 sim.veg <- capture.output(summary(anova.sim.veg))
-write.table(sim.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_simpson_aov.txt", sep = ",", quote = FALSE, row.names = T)
+#write.table(sim.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_simpson_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 #post hoc
 tukey.sh <- TukeyHSD(anova.sh.veg)
 tukey.sh$`sample_data(rare_phylo)$Month`
+sh.tuk.bac <- capture.output(tukey.sh$`sample_data(rare_phylo)$Month`)
 
+#write.table(sh.tuk.bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_shannon_tuk.txt", sep = ",", quote = FALSE, row.names = T)
+
+#post hoc
+tukey.sim <- TukeyHSD(anova.sim.veg)
+tukey.sim$`sample_data(rare_phylo)$Month`
+sim.tuk.bac <- capture.output(tukey.sim$`sample_data(rare_phylo)$Month`)
+write.table(sim.tuk.bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_simpson_tuk.txt", sep = ",", quote = FALSE, row.names = T)
 
 #check anova assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -170,20 +178,8 @@ plot(anova.sh.veg$fitted.values, anova.sh.veg$residuals, main = "Residuals vs Fi
      ylab = "Residuals") #residuals vs. fitted, test variance
 abline(h=0, col = "red") 
 
-#normality assumptions don't seem great
-anova.sh.veg.sq = aov(((richness$Shannon)^2) ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
-summary(anova.sh.veg.sq)
 
-#post hoc
-tukey.sh <- TukeyHSD(anova.sh.veg.sq)
-tukey.sh$`sample_data(rare_phylo)$Month`
 
-#check anova assumptions after log transform
-par(mfrow = c(1,2)) #puts the plots next to each other
-qqnorm(anova.sh.veg.sq$residuals) #normal q-q plot, tests normality
-qqline(anova.sh.veg.sq$residuals, col = "red") #line of fit on q-q plot
-plot(anova.sh.veg.sq$fitted.values, anova.sh.veg.sq$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", ylab = "Residuals") #residuals vs. fitted, test variance
-abline(h=0, col = "red") 
 
 alpha_veg_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
 alpha_veg_sh + geom_boxplot()
@@ -194,10 +190,13 @@ alpha_mo_sh <- plot_richness(rare_phylo, x = "Month", measures = c("Shannon", "S
 bac_alpha <- alpha_mo_sh + 
   geom_boxplot(show.legend = FALSE, aes(fill=Month)) +
   theme_linedraw()+
+  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="darkgray") +
   theme(plot.title = element_text(face = "bold", hjust = 0.5))+
-  ggtitle ("Bacterial Alpha Diversity")+  #change title
+  ggtitle ("Bacterial Alpha Diversity")+ 
+  scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.0001))+ 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
-
+bac_alpha
 #ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_alpha.png", device = png, plot=bac_alpha, width=7, height=5)
 ```
 
@@ -252,14 +251,16 @@ sampleDF <-  data.frame(sample_data(rare_phylo))
 
 # adonis : Analysis of variance using distance matrices
 adonis <- adonis2(DistBC ~ sampleDF$Vegetation*sampleDF$Month, data = sampleDF, strata = sampleDF$proximity, nperm = 999)
+adonis
 
 adonis_bac <- capture.output(adonis)
 
-write.table(adonis_bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_beta_adonis.txt", sep = ",", quote = FALSE, row.names = T)
+#write.table(adonis_bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_beta_adonis.txt", sep = ",", quote = FALSE, row.names = T)
 
 #### significance of vegetation ####
 library(pairwiseAdonis)
-pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$Vegetation)
+pairwise <- pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$Vegetation)
+pairwise
 
 #set proximity to vegetation as a random variable
 Vegetation = sample_data(rare_phylo)$Vegetation
@@ -272,6 +273,11 @@ pairwise.adonis2(DistBC ~ Vegetation, strata = "proximity1", data= data.frame(sa
 beta <- betadisper(DistBC, sampleDF$vegetation)
 anova(beta)
 permutest(beta)
+TukeyHSD(beta)
+
+
+
+
 
 
 #### significance of month ####
@@ -291,18 +297,6 @@ beta <- betadisper(DistBC, sampleDF$Month)
 anova(beta)
 permutest(beta)
 
-
-#### significance of vegetation*month ####
-library(pairwiseAdonis)
-pairwise_adon <- pairwise.adonis(DistBC, phyloseq::sample_data(rare_phylo)$month_veg)
-
-
-month_veg = sample_data(rare_phylo)$month_veg
-proximity1 = sample_data(rare_phylo)$proximity1
-
-pairwise.adonis2(DistBC ~ month_veg, strata = "proximity1", data= data.frame(sample_data(rare_phylo)))
-
-library(dplyr)
 
 # betadisper - analysis of multivariate homogeneity of group dispersion (variances)
 beta <- betadisper(DistBC, sampleDF$month_veg)
