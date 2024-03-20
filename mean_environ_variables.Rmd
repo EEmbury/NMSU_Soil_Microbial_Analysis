@@ -1,0 +1,76 @@
+---
+title: '<span style = ''font-size:14pt;''>**Microbial Communities in the changing vegetation of the Chihuahuan Desert 
+**</span>'
+subtitle: '<span style = ''font-size:12pt;''> C:N, Soil Temp., pH
+</span>'
+author: "Emily Embury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+<style type="text/css">
+/* Whole document: */ 
+body{
+  font-size: 12pt;
+}
+/* Headers */
+h1{
+  font-size: 12pt;
+}
+</style>
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,              
+  warning = FALSE,       
+  message = FALSE,  
+  cache = FALSE,        
+  fig.align = "center", 
+  fig.height = 10,
+  fig.width = 6,
+  class.source="bg-warning",
+  class.output="bg-success"
+)
+
+```
+
+
+
+#**Calculate averages soil temp**
+```{r}
+temp <- read.csv("/Users/emilyembury/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/soil_temp/Soil_temperature_2.csv")
+
+library(dplyr)
+
+temp_avg <- temp %>%
+  group_by(Site_month) %>%
+  summarise_at(vars(Celsius), list(name = mean))
+
+#write_csv(weather_avg, "Raw_data/JRN_temp_humid/monthly_avg_weather.csv")
+```
+
+```{r}
+c_n <- read.csv("/Users/emilyembury/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/soil_chem/C_N_for_r.csv")
+
+library(dplyr)
+
+CN_avg <- c_n  %>%
+  group_by(Site_month) %>%
+  summarise_at(vars(C_N), list(name = mean))
+
+#write_csv(weather_avg, "Raw_data/JRN_temp_humid/monthly_avg_weather.csv")
+```
+
+
+```{r}
+ph <- read.csv("/Users/emilyembury/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Raw_data/soil_chem/ph_for_r.csv")
+
+library(dplyr)
+
+ph_avg <- ph  %>%
+  group_by(Site_month) %>%
+  summarise_at(vars(pH), list(name = mean))
+
+#write_csv(weather_avg, "Raw_data/JRN_temp_humid/monthly_avg_weather.csv")
+```
