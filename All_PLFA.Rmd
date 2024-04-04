@@ -39,9 +39,8 @@ knitr::opts_chunk$set(
 ```{r import_data}
 PLFA_fun <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
 PLFA_bac <- read.csv("Raw_data/PLFA/All_PLFA_bac.csv")
-
-
 ```
+
 # **Fungal Plot**
 ```{r plot_plfa_fungi}
 
@@ -108,10 +107,10 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
                 y = Total_Percent_Biomass))+
   geom_boxplot(show.legend = FALSE, aes(fill=Month))+
   facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
- scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
+  scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
   theme_linedraw()+
-    stat_summary(fun=mean, geom="point", shape=18, color="darkgray") +
- theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
+  stat_summary(fun=mean, geom="point", shape=18, color="darkgray") +
+  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
        axis.title.y = element_blank()) + 
   #ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
   theme( text = element_text(size = 12), 
@@ -124,6 +123,7 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
 
 
 # **Fungal Stats**
+repeated meatures
 ```{r repeated_measures_anova_fun}
 library(dplyr)
 library(tidyverse)
@@ -132,6 +132,7 @@ library(ggpubr)
 library(plyr)
 
 
+#repeated meaures
 plfa_aov_fun <- anova_test(data = PLFA_fun, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Samp/(Month)))
 plfa_aov_fun
 
@@ -150,14 +151,17 @@ data.frame(outlier)
 row.names.remove <- c("114")
 PLFA_fun_rm_outlier <- PLFA_fun[!(row.names(PLFA_fun) %in% row.names.remove), ]
 
+#re-check outliers after removal
 outlier<-PLFA_fun_rm_outlier %>%
 group_by(Month,Veg_abrev) %>%
 identify_outliers(Total_Percent_Biomass)
 data.frame(outlier)
 
+#repeat repeated mesures anova test
 plfa_aov_fun_ <- anova_test(data = PLFA_fun_rm_outlier, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Samp/(Month)))
 plfa_aov_fun_
 
+#anova table output
 get_anova_table(plfa_aov_fun_, correction = "GG")
 
 #2. Normality Assumption
@@ -167,14 +171,15 @@ group_by(Month,Veg_abrev) %>%
 shapiro_test(Total_Percent_Biomass)
 data.frame(normality)
 
+#view normality
 ggqqplot(PLFA_fun_rm_outlier, "Total_Percent_Biomass", ggtheme = theme_bw()) +
   facet_grid(Veg_abrev ~ Month, labeller = "label_both")
 
 #July mesquite was significantly different in the Shapiro-Wilk’s test, but looks normal in the graph
 
+
 #3. Assumption of Sphericity
   # assessed in the anova_test function
-
 
 #### post-hoc assessments
 library(lmerTest)
@@ -182,8 +187,10 @@ library(lme4)
 library(multcomp)
 library(emmeans)
 
+#view anova table
 get_anova_table(plfa_aov_fun_, correction = "GG")
 
+#get tukey p-values
 m <- lme4::lmer(Total_Percent_Biomass ~ Month*Veg_abrev + (1|Samp), data = PLFA_fun_rm_outlier)
 summary(m)
 emmeans <- emmeans(m, ~Veg_abrev)
@@ -198,6 +205,9 @@ pairs(emmeans, adjust = "Tukey")
 ```
 
 ```{r plfa_statistics_fungi}
+
+
+#### non-repeated meaures statistics ####
 
 # anova model of biomass by vegetation and month
   #month = month
@@ -226,7 +236,7 @@ PLFA_fun2 <- PLFA_fun2 %>%
 mod.plfa.fun2 <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev)
 
 #assess how proximity to vegetation influences biomass
-proximity <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev*PLFA_fun2$Spatial_ID)
+proximity <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev*PLFA_fun2$proximity)
 summary(proximity)
 
 
@@ -321,12 +331,13 @@ data.frame(outlier)
 row.names.remove <- c("48")
 PLFA_bac_rm_outlier <- PLFA_bac[!(row.names(PLFA_bac) %in% row.names.remove), ]
 
-
+#re-check after removing outliers
 outlier<-PLFA_bac_rm_outlier %>%
 group_by(Month,Veg_abrev) %>%
 identify_outliers(Total_Percent_Biomass)
 data.frame(outlier)
 
+#re-run after removing outliers
 plfa_aov_bac <- anova_test(data = PLFA_bac_rm_outlier, Total_Percent_Biomass ~ Month*Veg_abrev + Error(Site/(Month)))
 plfa_aov_bac
 
@@ -337,6 +348,7 @@ group_by(Month,Veg_abrev) %>%
 shapiro_test(Total_Percent_Biomass)
 data.frame(normality)
 
+#view normality
 ggqqplot(PLFA_bac_rm_outlier, "Total_Percent_Biomass", ggtheme = theme_bw()) +
   facet_grid(Veg_abrev ~ Month, labeller = "label_both")
 
@@ -350,8 +362,10 @@ library(lme4)
 library(multcomp)
 library(emmeans)
 
+#view anova table
 get_anova_table(plfa_aov_bac, correction = "GG")
 
+#get tukey p-values
 m <- lme4::lmer(Total_Percent_Biomass ~ Month*Veg_abrev + (1|Site), data = PLFA_bac_rm_outlier)
 summary(m)
 emmeans <- emmeans(m, ~Veg_abrev)
@@ -367,6 +381,7 @@ pairs(emmeans, adjust = "Tukey")
 
 ```{r plfa_statistics_bacterial}
 
+###### non-repeated measures stats ####3
 
 # anova model of biomass by vegetation and month
   #month = month
@@ -374,7 +389,7 @@ pairs(emmeans, adjust = "Tukey")
 mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev)
 
 #assess how proximity to vegetation influences biomass
-proximity <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev*PLFA_bac$Spatial_ID)
+proximity <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev*PLFA_bac$proximity)
 summary(proximity)
 
 #summary of anova results
@@ -612,9 +627,8 @@ final <- annotate_figure(figure,
 final
 
 library(svglite)
-ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa_no_signif.png", plot=final, width=9, height=7)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa_no_signif.png", plot=final, width=9, height=7)
 ```
-
 
 
 
@@ -640,15 +654,22 @@ PLFA_ratio <- ggplot(ratio,
             aes(x=factor(Vegetation),
                 y = fungi_to_bacteria))+
   geom_boxplot(show.legend = FALSE, aes(fill=Month))+
-  facet_grid(~Month)+
+  facet_grid(~factor(Month, levels = c("October", "January", "March", "May", "July")))+
   theme_linedraw()+
-  #ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
+  ggtitle ("Ratio of Fungal and Bacterial Biomass Across Vegetation Types 
+and Sampleing Periods")+  #change title
+  xlab("Vegetation")+
+  ylab("Fungal to Bacterial Biomass")+
   theme( text = element_text(size = 12), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
 PLFA_ratio
 
+library(svglite)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_bac_biomass.png", plot=PLFA_ratio, width=9, height=7)
 
+
+# non-repeated measures fungi to bacteria biomass anova
 plfa_ratio_aov <- aov(ratio$fungi_to_bacteria ~ ratio$Vegetation*ratio$Month)
 summary(plfa_ratio_aov)
 
@@ -656,6 +677,7 @@ ratio_plfa <- capture.output(summary(plfa_ratio_aov))
 
 #write.table(ratio_plfa, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_ratio_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
+#check normality
 par(mfrow = c(1,2)) #puts the plots next to each other
 qqnorm(plfa_ratio_aov$residuals) #normal q-q plot, tests normality
 qqline(plfa_ratio_aov$residuals, col = "red") #line of fit on q-q plot
@@ -664,6 +686,7 @@ plot(plfa_ratio_aov$fitted.values, plfa_ratio_aov$residuals, main = "Residuals v
 abline(h=0, col = "red") 
 
 
+#tukey hsd
 tuk.ratio<- TukeyHSD(plfa_ratio_aov)
 
 tuk.ratio$`ratio$Month`
@@ -680,6 +703,15 @@ veg_mon_signif
 
 #write.table(veg_mon_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fun_to_bac_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
 
+
+
+
+library(dplyr)
+
+#obtain table of average ratios
+ratio_avg <- ratio  %>%
+  group_by(Site_month) %>%
+  summarise_at(vars(fungi_to_bacteria), list(name = mean))
 ```
 
 ```{r repeated_measures_anova_ratio}
@@ -728,7 +760,7 @@ library(multcomp)
 library(emmeans)
 
 
-
+#get tukey hsd values
 m <- lme4::lmer(fungi_to_bacteria ~ Month*Vegetation + (1|Samp), data = ratio)
 summary(m)
 emmeans <- emmeans(m, ~Vegetation)
