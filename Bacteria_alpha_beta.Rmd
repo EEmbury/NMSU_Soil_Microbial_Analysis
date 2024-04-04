@@ -36,9 +36,7 @@ knitr::opts_chunk$set(
 ```
 
 
-# **Import qiime formatted data**
-  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
-
+# **Import data**
 ```{r import_data}
 
 library(phyloseq)
@@ -81,6 +79,7 @@ phylo_raw
 colnames(tax_table(phylo_raw))= c("Kingdom","Phylum","Class","Order","Family","Genus", "Species")
 ```
 
+
 # **remove controls + contaminants**
 
 ```{r decontam}
@@ -94,9 +93,10 @@ table(contamdf.prev05$contaminant)
 phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
 phylo_rm_contaminat #after
 
+
 #remove any left over controls so they don't impact rarefy
-#remove sample 129 and 93 as it had very low reads after filtering, don't want them to impact rarefy
-phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 129 & sample.id != 93)
+#remove sample 93 as it had very low reads after filtering, don't want it to impact rarefy
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 93)
 
 
 ## remove unknowns and archaea, keep only bacteria
@@ -141,19 +141,27 @@ rare_phylo <- phyloseq(otu_table(rare, taxa_are_rows = FALSE),
 
 ```{r alpha_Shannon}
 
+#calculate richness with phyloseq package
 richness <- estimate_richness(rare_phylo)
 
 #Shannon
-anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity1)
+anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity)
 summary(anova.sh.veg)
 
+#anova of shannon
+anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
+summary(anova.sh.veg)
+
+#capture anova table
 sh.veg <- capture.output(summary(anova.sh.veg))
 #write.table(sh.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_shannon_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
 #Simpson
-anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity1)
+anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity)
 summary(anova.sim.veg)
 
+anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month )
+summary(anova.sim.veg)
 sim.veg <- capture.output(summary(anova.sim.veg))
 #write.table(sim.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_simpson_aov.txt", sep = ",", quote = FALSE, row.names = T)
 
@@ -180,12 +188,12 @@ abline(h=0, col = "red")
 
 
 
-
+#plot shannon
 alpha_veg_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
 alpha_veg_sh + geom_boxplot()
 
 
-
+#plot shannon and simpson together
 alpha_mo_sh <- plot_richness(rare_phylo, x = "Month", measures = c("Shannon", "Simpson"))
 bac_alpha <- alpha_mo_sh + 
   geom_boxplot(show.legend = FALSE, aes(fill=Month)) +
@@ -239,7 +247,7 @@ theme(plot.title = element_text(face = "bold", hjust = 0.5))
 p
 
 #library(svglite)
-#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_beta.png", plot=p, width=7, height=5)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_beta2.png", plot=p, width=7, height=5)
 
 ```
 
@@ -274,10 +282,6 @@ beta <- betadisper(DistBC, sampleDF$vegetation)
 anova(beta)
 permutest(beta)
 TukeyHSD(beta)
-
-
-
-
 
 
 #### significance of month ####
