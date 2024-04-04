@@ -223,3 +223,8 @@ g_indic_species
 
 
 - Morrison 2019 " We also used Indicator Species Analysis (ISA; De Cáceres and Legendre, 2009; De Cáceres et al., 2010) to test for fungal OTUs with ≥25% frequency that had large positive or negative responses to warming in frequency and relative abundance"
+
+```{r session_info}
+library(devtools)
+session_info()
+```

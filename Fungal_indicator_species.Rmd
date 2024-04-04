@@ -35,7 +35,7 @@ knitr::opts_chunk$set(
 
 ```
 
-# **Import formatted data**
+# **Import data**
 
 ```{r import_data}
 
@@ -124,7 +124,6 @@ OTUdf = as.data.frame(OTU1)
 taxa = as(tax_table(phylo_rm_cntrl), "matrix")
 taxadf = as.data.frame(taxa)
 taxadf <- tibble::rownames_to_column(taxadf, "sample.id")
-
 # transpose 
 
 #add metadata to OTU table
@@ -155,6 +154,8 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 library(indicspecies)
 options(max.print=1000000)
 
+#using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
+
 # vegetation
 sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
                  max.order = 2, 
@@ -178,7 +179,8 @@ print(sc_mg)
 ```
 
 ```{r}
-#get taxa info
+#get taxa info for the selected indicator species
+
 
 mg_species <- as.data.frame(sc_mg$finalsplist)
 mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
@@ -192,8 +194,8 @@ g_species <- as.data.frame(sc_g$finalsplist)
 g_species$sample.id <- g_species$`sc_g$finalsplist`
 g_species$vegetation <- "Grass"
 
-### get taxa info
 
+### get taxa info and export tables
 mg_indic_species <- merge(mg_species, taxadf, 
                           by = 'sample.id', all = FALSE)
 mg_indic_species
@@ -210,4 +212,10 @@ g_indic_species <- merge(g_species, taxadf,
 g_indic_species
 #write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
+```
+
+
+```{r session_info}
+library(devtools)
+session_info()
 ```
