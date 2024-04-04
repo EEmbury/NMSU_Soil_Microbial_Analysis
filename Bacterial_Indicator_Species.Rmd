@@ -36,8 +36,7 @@ knitr::opts_chunk$set(
 ```
 
 
-# **Import qiime formatted data**
-  - https://blog.codyglickman.com/2018/10/qiime2-to-phyloseq.html
+# **Import data**
 
 ```{r import_data}
 
@@ -94,7 +93,7 @@ phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
 phylo_rm_contaminat #after
 
 #remove any left over controls 
-phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 129)
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 93)
 
 
 ## remove unknowns and archaea, keep only bacteria
@@ -133,7 +132,6 @@ OTUdf = as.data.frame(OTU1)
 taxa = as(tax_table(phylo_rm_archaea), "matrix")
 taxadf = as.data.frame(taxa)
 taxadf <- tibble::rownames_to_column(taxadf, "sample.id")
-
 # transpose 
 
 #add metadata to OTU table
@@ -150,9 +148,20 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 ```
 
 
+ - the function "indicators" can be restrained by setting values for "a" and "b"
+ - info from: https://cran.r-project.org/web/packages/indicspecies/vignettes/IndicatorSpeciesAnalysis.html#the-function-indicators 
+    - *"Component ‘A’ is sample estimate of the probability that the surveyed site belongs to the target site group given the fact that the species has been found. This conditional probability is called the specificity or positive predictive value of the species as indicator of the site group."*
+    - *"Component ‘B’ is sample estimate of the probability of finding the species in sites belonging to the site group. This second conditional probability is called the fidelity or sensitivity of the species as indicator of the target site group."*
+    
+    - interpretation example:
+      - *"indicator of Group 1 because it occurs in sites belonging to this group only (i.e., A = 1.0000), although not all sites belonging to Group 1 include the species (i.e., B = 0.8235)."*
+      - *"...indicate Group 3 because it appears in all sites belonging to this group (i.e., B = 1.0000) and it is largely (but not completely) restricted to it (i.e., A = 0.8278)."*
+      
 ```{r}
 library(indicspecies)
 options(max.print=1000000)
+
+#using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
 
 # vegetation
 sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
@@ -163,19 +172,19 @@ print(sc_g)
 
 sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
                  max.order = 2, 
-                 At=0.9, Bt=0.88)
+                 At=0.75, Bt=0.88)
 print(sc_m)
 
 
 sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
                  max.order = 2, 
-                 At=0.8, Bt=0.5)
+                 At=0.83, Bt=0.5)
 print(sc_mg)
 
 ```
 
 ```{r}
-#get taxa info
+#get taxa info for the selected indicator species
 
 mg_species <- as.data.frame(sc_mg$finalsplist)
 mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
@@ -189,18 +198,18 @@ g_species <- as.data.frame(sc_g$finalsplist)
 g_species$sample.id <- g_species$`sc_g$finalsplist`
 g_species$vegetation <- "Grass"
 
-### get taxa info
 
+### get taxa info and export tables
 mg_indic_species <- merge(mg_species, taxadf, 
                           by = 'sample.id', all = FALSE)
 mg_indic_species
-#write.table(mg_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+#write.table(mg_indic_species, file = "~/Desktop/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 m_indic_species <- merge(m_species, taxadf, 
                           by = 'sample.id', all = FALSE)
 m_indic_species
 
-#write.table(m_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+#write.table(m_indic_species, file = "~/Desktop/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 g_indic_species <- merge(g_species, taxadf, 
                           by = 'sample.id', all = FALSE)
@@ -211,8 +220,6 @@ g_indic_species
 
 - https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/isa/
 - https://cran.r-project.org/web/packages/indicspecies/vignettes/IndicatorSpeciesAnalysis.html#additional-functions-to-estimate-and-test-the-association-between-species-and-groups-of-sites 
-
-
 
 
 - Morrison 2019 " We also used Indicator Species Analysis (ISA; De Cáceres and Legendre, 2009; De Cáceres et al., 2010) to test for fungal OTUs with ≥25% frequency that had large positive or negative responses to warming in frequency and relative abundance"
