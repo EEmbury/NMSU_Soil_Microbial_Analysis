@@ -161,30 +161,54 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 library(indicspecies)
 options(max.print=1000000)
 
+library(indicspecies)
+options(max.print=1000000)
+
+treatment = OTUdf_merge$Vegetation
+
+visa = multipatt(OTUdf, cluster = treatment, duleg = FALSE, func = "IndVal.g", control = how(nperm = 9999))
+options(max.print=1000000)
+summary(visa, indvalcomp=TRUE, A = 0.6, B = 0.6)
+
+summary <- capture.output(summary(visa, indvalcomp=TRUE, A = 0.6, B = 0.6))
+write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_indicators_multipatt.csv")
+
 #using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
 
 # vegetation
-sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
-                 max.order = 2, 
-                 At=0.9, Bt=0.6)
-print(sc_g)
-
-
-sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
-                 max.order = 2, 
-                 At=0.75, Bt=0.88)
-print(sc_m)
-
-
-sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
-                 max.order = 2, 
-                 At=0.83, Bt=0.5)
-print(sc_mg)
+# sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
+#                  max.order = 2, 
+#                  At=0.9, Bt=0.6)
+# print(sc_g)
+# 
+# 
+# sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
+#                  max.order = 2, 
+#                  At=0.75, Bt=0.88)
+# print(sc_m)
+# 
+# 
+# sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
+#                  max.order = 2, 
+#                  At=0.83, Bt=0.5)
+# print(sc_mg)
 
 ```
 
 ```{r}
 #get taxa info for the selected indicator species
+
+
+bacterial_indicators <- read.csv("bacteria_indicators_multipatt.csv")
+
+taxa <- merge(bacterial_indicators, taxadf, 
+                          by = 'sample.id', all = FALSE)
+
+write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_indicators_multipatt_taxa.csv")
+
+
+
+##########
 
 mg_species <- as.data.frame(sc_mg$finalsplist)
 mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
