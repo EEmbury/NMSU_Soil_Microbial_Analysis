@@ -154,32 +154,50 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
 library(indicspecies)
 options(max.print=1000000)
 
+treatment = OTUdf_merge$Vegetation
+
+visa = multipatt(OTUdf, cluster = treatment, duleg = FALSE, func = "IndVal.g", control = how(nperm = 9999))
+options(max.print=1000000)
+summary(visa, indvalcomp=TRUE, A = 0.9, B = 0.5)
+
+summary <- capture.output(summary(visa, indvalcomp=TRUE, A = 0.9, B = 0.5))
+write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt.csv")
+
 #using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
 
 # vegetation
-sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
-                 max.order = 2, 
-                 At=1, Bt=0.6)
-print(sc_g)
+#sc_g <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass", 
+#                 max.order = 2, 
+#                 At=1, Bt=0.6)
+#print(sc_g)
 
 #sc2_g <- pruneindicators(sc_g, At=1, Bt=0.8, verbose=TRUE)
 #print(sc2_g)
 
 
-sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
-                 max.order = 2, 
-                 At=1, Bt=0.7)
-print(sc_m)
-
-sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
-                 max.order = 2, 
-                 At=1, Bt=0.65)
-print(sc_mg)
+# sc_m <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Mesquite", 
+#                  max.order = 2, 
+#                  At=1, Bt=0.7)
+# print(sc_m)
+# 
+# sc_mg <- indicators(X=OTUdf, cluster=OTUdf_merge$Vegetation, group="Grass-Mesquite", 
+#                  max.order = 2, 
+#                  At=1, Bt=0.65)
+# print(sc_mg)
 
 ```
 
 ```{r}
 #get taxa info for the selected indicator species
+
+fungal_indicators <- read.csv("fungal_indicators_multipatt.csv")
+
+taxa <- merge(fungal_indicators, taxadf, 
+                          by = 'sample.id', all = FALSE)
+
+write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt_taxa.csv")
+
+######
 
 
 mg_species <- as.data.frame(sc_mg$finalsplist)
