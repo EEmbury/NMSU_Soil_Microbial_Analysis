@@ -161,7 +161,7 @@ options(max.print=1000000)
 summary(visa, indvalcomp=TRUE, A = 0.9, B = 0.5)
 
 summary <- capture.output(summary(visa, indvalcomp=TRUE, A = 0.9, B = 0.5))
-write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt.csv")
+#write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt.csv")
 
 #using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
 
@@ -195,43 +195,87 @@ fungal_indicators <- read.csv("fungal_indicators_multipatt.csv")
 taxa <- merge(fungal_indicators, taxadf, 
                           by = 'sample.id', all = FALSE)
 
-write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt_taxa.csv")
 
-######
+#write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt_taxa_all.csv")
 
-
-mg_species <- as.data.frame(sc_mg$finalsplist)
-mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
-mg_species$vegetation <- "Grass-Mesquite"
-
-m_species <- as.data.frame(sc_m$finalsplist)
-m_species$sample.id <- m_species$`sc_m$finalsplist`
-m_species$vegetation <- "Mesquite"
-
-g_species <- as.data.frame(sc_g$finalsplist)
-g_species$sample.id <- g_species$`sc_g$finalsplist`
-g_species$vegetation <- "Grass"
-
-
-### get taxa info and export tables
-mg_indic_species <- merge(mg_species, taxadf, 
-                          by = 'sample.id', all = FALSE)
-mg_indic_species
-#write.table(mg_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
-
-m_indic_species <- merge(m_species, taxadf, 
-                          by = 'sample.id', all = FALSE)
-m_indic_species
-
-#write.table(m_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
-
-g_indic_species <- merge(g_species, taxadf, 
-                          by = 'sample.id', all = FALSE)
-g_indic_species
-#write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+# ######
+# 
+# 
+# mg_species <- as.data.frame(sc_mg$finalsplist)
+# mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
+# mg_species$vegetation <- "Grass-Mesquite"
+# 
+# m_species <- as.data.frame(sc_m$finalsplist)
+# m_species$sample.id <- m_species$`sc_m$finalsplist`
+# m_species$vegetation <- "Mesquite"
+# 
+# g_species <- as.data.frame(sc_g$finalsplist)
+# g_species$sample.id <- g_species$`sc_g$finalsplist`
+# g_species$vegetation <- "Grass"
+# 
+# 
+# ### get taxa info and export tables
+# mg_indic_species <- merge(mg_species, taxadf, 
+#                           by = 'sample.id', all = FALSE)
+# mg_indic_species
+# #write.table(mg_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# m_indic_species <- merge(m_species, taxadf, 
+#                           by = 'sample.id', all = FALSE)
+# m_indic_species
+# 
+# #write.table(m_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# g_indic_species <- merge(g_species, taxadf, 
+#                           by = 'sample.id', all = FALSE)
+# g_indic_species
+# #write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
 
+```{r funguild}
+# #FUNGuild requires one column named "taxonomy" that follows this format. 
+# #k__Fungi;p__Basidiomycota;c__Agaricomycetes;o__Corticiales;f__Corticiaceae;g__Laetisaria;s__Laetisaria_fuciformis
+# 
+# #Do this by pasting the information from the taxonomic ranks into a column separated by ';'
+taxa$taxonomy <- paste(taxa$Kingdom,taxa$Phylum, taxa$Class, taxa$Order, taxa$Family, taxa$Genus, taxa$Species, sep=";")
+# 
+# #Since we don't need this for FUNGuild, remove the Kingdom, Phylum, Class, Order, Family, Genus & Species columns
+# taxa_final <- taxa[, -c(2:13)] 
+# #3. Write a csv 
+# 
+write.csv(taxa, "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/FunGuild_indicspecies.csv", row.names = FALSE)
+# 
+# #Proceed to running FUNGuild on command line using the 'FunGuild.csv' file as .txt
+
+
+# python3 Guilds_v1.1.py -otu FunGuild_indicspecies.txt -db fungi -m -u
+```
+
+Found 100 matching taxonomy records in the database.
+Dereplicating and sorting the result...
+FunGuild tried to assign function to 76 OTUs in 'FunGuild_indicspecies.txt'.
+FUNGuild made assignments on 59 OTUs.
+Result saved to 'FunGuild_indicspecies.guilds.txt'
+
+Additional output:
+FUNGuild made assignments on 59 OTUs, these have been saved to FunGuild_indicspecies.guilds_matched.txt.
+17 OTUs were unassigned, these are saved to FunGuild_indicspecies.guilds_unmatched.txt.
+
+
+
+NEED TO ADD THE DEREPLICATED TAXA BACK TO SPREADSHEET
+
+```{r}
+
+guilds <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/FunGuild_indicspecies.guilds2.csv", header = TRUE)
+
+guild_indic_data <- merge(guilds, taxa, 
+                          by = 'sample.id', all = FALSE)
+
+
+write.csv(guild_indic_data, "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/indicspecies_with_guild.csv", row.names = FALSE)
+```
 
 ```{r session_info}
 library(devtools)
