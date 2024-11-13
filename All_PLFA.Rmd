@@ -121,6 +121,21 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
 
 ```
 
+**Summary Stats**
+
+```{r}
+
+fun_avg <- PLFA_fun_rm_outlier  %>%
+  group_by(Veg_abrev) %>%
+  summarise_at(vars(Total_Percent_Biomass), list(name = mean))
+fun_avg
+
+bac_avg <- PLFA_bac_rm_outlier  %>%
+  group_by(Veg_abrev) %>%
+  summarise_at(vars(Total_Percent_Biomass), list(name = mean))
+bac_avg
+
+```
 
 # **Fungal Stats**
 repeated meatures
@@ -205,100 +220,100 @@ pairs(emmeans, adjust = "Tukey")
 ```
 
 ```{r plfa_statistics_fungi}
-
-
-#### non-repeated meaures statistics ####
-
-# anova model of biomass by vegetation and month
-  #month = month
-  #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
-mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev)
-
-
-#check assumptions
-par(mfrow = c(1,2)) #puts the plots next to each other
-qqnorm(mod.plfa.fun$residuals) #normal q-q plot, tests normality
-qqline(mod.plfa.fun$residuals, col = "red") #line of fit on q-q plot
-plot(mod.plfa.fun$fitted.values, mod.plfa.fun$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
-     ylab = "Residuals") #residuals vs. fitted, test variance
-abline(h=0, col = "red") 
-
-library(tidyverse)
-library(dplyr)
-
-#fungal data does not meet normallity assumptions, must log transform for anova
-PLFA_fun2 <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
-PLFA_fun2$Total_Percent_Biomass<- log10(PLFA_fun2$Total_Percent_Biomass)
-PLFA_fun2 <- PLFA_fun2 %>% 
-  filter_at(vars(Total_Percent_Biomass), all_vars(!is.infinite(.)))
-
-
-mod.plfa.fun2 <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev)
-
-#assess how proximity to vegetation influences biomass
-proximity <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev*PLFA_fun2$proximity)
-summary(proximity)
-
-
-#check assumptions
-par(mfrow = c(1,2)) #puts the plots next to each other
-qqnorm(mod.plfa.fun2 $residuals) #normal q-q plot, tests normality
-qqline(mod.plfa.fun2 $residuals, col = "red") #line of fit on q-q plot
-plot(mod.plfa.fun2 $fitted.values, mod.plfa.fun2 $residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
-     ylab = "Residuals") #residuals vs. fitted, test variance
-abline(h=0, col = "red") 
-
-
-
-#summary of anova results
-plfa_fun_aov <- capture.output(summary(mod.plfa.fun2))
-
-#write.table(plfa_fun_aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_aov.txt", sep = ",", quote = FALSE, row.names = T)
-
-#Post hoc analysis of anova
-tuk.plfa.fun2 <- TukeyHSD(mod.plfa.fun2)
-
-#tukeyHSD pairwise vegetation results based on ANOVA model  
-tuk.plfa.fun2$`PLFA_fun2$Veg_abrev`
-
-#tukeyHSD pairwise month results based on ANOVA model  
-plfa_month <- tuk.plfa.fun2$`PLFA_fun2$Month`
-
-#write.table(plfa_month, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_month.txt", sep = ",", quote = FALSE, row.names = T)
-
-library(dplyr)
-library(tibble)
-library(utils)
-library(tidyverse)
-
-# convert tukey results to dataframe
-x.fun <- as.data.frame(tuk.plfa.fun2$`PLFA_fun2$Month:PLFA_fun2$Veg_abrev`)
-
-# get a column with the comparison labels
-y.fun <- tibble::rownames_to_column(x.fun, "label")
-
-
-#isolate comparisons that are relevant
-G_fun <- dplyr::filter(y.fun, grepl("^.*:G.*:G", label))
-M_fun <- dplyr::filter(y.fun, grepl("^.*:M.*:M", label)) 
-T_fun <- dplyr::filter(y.fun, grepl("^.*:T.*:T", label)) 
-
-
-# merge fungal data
-fun <- G_fun %>%
-  dplyr::full_join(M_fun, by = c("label", "diff", "lwr", "upr", "p adj")) 
-
-fun <- fun %>%
-  dplyr::full_join(T_fun, by = c("label", "diff", "lwr", "upr", "p adj"))
-
-#filter for significant values
-fun_signif <- fun %>%
-filter(fun$`p adj` < .05) 
-
-#view signif
-fun_signif
-
-write.table(fun_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# 
+# #### non-repeated meaures statistics ####
+# 
+# # anova model of biomass by vegetation and month
+#   #month = month
+#   #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
+# mod.plfa.fun <- aov(PLFA_fun$Total_Percent_Biomass ~ PLFA_fun$Month*PLFA_fun$Veg_abrev)
+# 
+# 
+# #check assumptions
+# par(mfrow = c(1,2)) #puts the plots next to each other
+# qqnorm(mod.plfa.fun$residuals) #normal q-q plot, tests normality
+# qqline(mod.plfa.fun$residuals, col = "red") #line of fit on q-q plot
+# plot(mod.plfa.fun$fitted.values, mod.plfa.fun$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+#      ylab = "Residuals") #residuals vs. fitted, test variance
+# abline(h=0, col = "red") 
+# 
+# library(tidyverse)
+# library(dplyr)
+# 
+# #fungal data does not meet normallity assumptions, must log transform for anova
+# PLFA_fun2 <- read.csv("Raw_data/PLFA/All_PLFA_fun.csv")
+# PLFA_fun2$Total_Percent_Biomass<- log10(PLFA_fun2$Total_Percent_Biomass)
+# PLFA_fun2 <- PLFA_fun2 %>% 
+#   filter_at(vars(Total_Percent_Biomass), all_vars(!is.infinite(.)))
+# 
+# 
+# mod.plfa.fun2 <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev)
+# 
+# #assess how proximity to vegetation influences biomass
+# proximity <- aov(PLFA_fun2$Total_Percent_Biomass ~ PLFA_fun2$Month*PLFA_fun2$Veg_abrev*PLFA_fun2$proximity)
+# summary(proximity)
+# 
+# 
+# #check assumptions
+# par(mfrow = c(1,2)) #puts the plots next to each other
+# qqnorm(mod.plfa.fun2 $residuals) #normal q-q plot, tests normality
+# qqline(mod.plfa.fun2 $residuals, col = "red") #line of fit on q-q plot
+# plot(mod.plfa.fun2 $fitted.values, mod.plfa.fun2 $residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+#      ylab = "Residuals") #residuals vs. fitted, test variance
+# abline(h=0, col = "red") 
+# 
+# 
+# 
+# #summary of anova results
+# plfa_fun_aov <- capture.output(summary(mod.plfa.fun2))
+# 
+# #write.table(plfa_fun_aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_aov.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# #Post hoc analysis of anova
+# tuk.plfa.fun2 <- TukeyHSD(mod.plfa.fun2)
+# 
+# #tukeyHSD pairwise vegetation results based on ANOVA model  
+# tuk.plfa.fun2$`PLFA_fun2$Veg_abrev`
+# 
+# #tukeyHSD pairwise month results based on ANOVA model  
+# plfa_month <- tuk.plfa.fun2$`PLFA_fun2$Month`
+# 
+# #write.table(plfa_month, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_month.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# library(dplyr)
+# library(tibble)
+# library(utils)
+# library(tidyverse)
+# 
+# # convert tukey results to dataframe
+# x.fun <- as.data.frame(tuk.plfa.fun2$`PLFA_fun2$Month:PLFA_fun2$Veg_abrev`)
+# 
+# # get a column with the comparison labels
+# y.fun <- tibble::rownames_to_column(x.fun, "label")
+# 
+# 
+# #isolate comparisons that are relevant
+# G_fun <- dplyr::filter(y.fun, grepl("^.*:G.*:G", label))
+# M_fun <- dplyr::filter(y.fun, grepl("^.*:M.*:M", label)) 
+# T_fun <- dplyr::filter(y.fun, grepl("^.*:T.*:T", label)) 
+# 
+# 
+# # merge fungal data
+# fun <- G_fun %>%
+#   dplyr::full_join(M_fun, by = c("label", "diff", "lwr", "upr", "p adj")) 
+# 
+# fun <- fun %>%
+#   dplyr::full_join(T_fun, by = c("label", "diff", "lwr", "upr", "p adj"))
+# 
+# #filter for significant values
+# fun_signif <- fun %>%
+# filter(fun$`p adj` < .05) 
+# 
+# #view signif
+# fun_signif
+# 
+# #write.table(fun_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_fungi_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
 
@@ -381,149 +396,150 @@ pairs(emmeans, adjust = "Tukey")
 
 ```{r plfa_statistics_bacterial}
 
-###### non-repeated measures stats ####3
-
-# anova model of biomass by vegetation and month
-  #month = month
-  #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
-mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev)
-
-#assess how proximity to vegetation influences biomass
-proximity <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev*PLFA_bac$proximity)
-summary(proximity)
-
-#summary of anova results
-summary(mod.plfa.bac)
-
-plfa_bac_aov <- capture.output(summary(mod.plfa.bac))
-#write.table(plfa_bac_aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_aov.txt", sep = ",", quote = FALSE, row.names = T)
-
-#check anova assumptions
-
-par(mfrow = c(1,2)) #puts the plots next to each other
-qqnorm(mod.plfa.bac$residuals) #normal q-q plot, tests normality
-qqline(mod.plfa.bac$residuals, col = "red") #line of fit on q-q plot
-plot(mod.plfa.bac$fitted.values, mod.plfa.bac$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
-     ylab = "Residuals") #residuals vs. fitted, test variance
-abline(h=0, col = "red") 
-
-
-
-
-#Post hoc analysis of anova
-tuk.plfa.bac <- TukeyHSD(mod.plfa.bac)
-
-
-#tukeyHSD pairwise vegetation results based on ANOVA model
-tuk_veg_bac <- tuk.plfa.bac$`PLFA_bac$Veg_abrev`
-
-
-
-tuk_month_bac <- tuk.plfa.bac$`PLFA_bac$Month`
-write.table(tuk_month_bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_month.txt", sep = ",", quote = FALSE, row.names = T)
-
-library(dplyr)
-library(tibble)
-library(utils)
-library(tidyverse)
-
-# convert tukey results to dataframe
-x.bac <- as.data.frame(tuk.plfa.bac$`PLFA_bac$Month:PLFA_bac$Veg_abrev`) 
-
-# get a column with the comparison labels
-y.bac <- tibble::rownames_to_column(x.bac, "label")
-
-
-#isolate comparisons that are relevant
-G_bac <- dplyr::filter(y.bac, grepl("^.*:G.*:G", label))
-M_bac <- dplyr::filter(y.bac, grepl("^.*:M.*:M", label)) 
-T_bac <- dplyr::filter(y.bac, grepl("^.*:T.*:T", label)) 
-
-
-# merge fungal data
-bac <- G_bac %>%
-  dplyr::full_join(M_bac, by = c("label", "diff", "lwr", "upr", "p adj")) 
-
-bac <- bac %>%
-  dplyr::full_join(T_bac, by = c("label", "diff", "lwr", "upr", "p adj"))
-
-#filter for significant values
-bac_signif <- bac %>%
-filter(bac$`p adj` < .05) 
-
-#view signif
-bac_signif
-
-#write.table(bac_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
+# ###### non-repeated measures stats ####3
+# 
+# # anova model of biomass by vegetation and month
+#   #month = month
+#   #vegetation = mesquite (M), grass (G), or mesquite_grass (T)
+# mod.plfa.bac <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev)
+# 
+# #assess how proximity to vegetation influences biomass
+# proximity <- aov(PLFA_bac$Total_Percent_Biomass ~ PLFA_bac$Month*PLFA_bac$Veg_abrev*PLFA_bac$proximity)
+# summary(proximity)
+# 
+# #summary of anova results
+# summary(mod.plfa.bac)
+# 
+# plfa_bac_aov <- capture.output(summary(mod.plfa.bac))
+# #write.table(plfa_bac_aov, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_aov.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# #check anova assumptions
+# 
+# par(mfrow = c(1,2)) #puts the plots next to each other
+# qqnorm(mod.plfa.bac$residuals) #normal q-q plot, tests normality
+# qqline(mod.plfa.bac$residuals, col = "red") #line of fit on q-q plot
+# plot(mod.plfa.bac$fitted.values, mod.plfa.bac$residuals, main = "Residuals vs Fitted", xlab = "Fitted Values", 
+#      ylab = "Residuals") #residuals vs. fitted, test variance
+# abline(h=0, col = "red") 
+# 
+# 
+# 
+# 
+# #Post hoc analysis of anova
+# tuk.plfa.bac <- TukeyHSD(mod.plfa.bac)
+# 
+# 
+# #tukeyHSD pairwise vegetation results based on ANOVA model
+# tuk_veg_bac <- tuk.plfa.bac$`PLFA_bac$Veg_abrev`
+# 
+# 
+# 
+# tuk_month_bac <- tuk.plfa.bac$`PLFA_bac$Month`
+# write.table(tuk_month_bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_month.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# library(dplyr)
+# library(tibble)
+# library(utils)
+# library(tidyverse)
+# 
+# # convert tukey results to dataframe
+# x.bac <- as.data.frame(tuk.plfa.bac$`PLFA_bac$Month:PLFA_bac$Veg_abrev`) 
+# 
+# # get a column with the comparison labels
+# y.bac <- tibble::rownames_to_column(x.bac, "label")
+# 
+# 
+# #isolate comparisons that are relevant
+# G_bac <- dplyr::filter(y.bac, grepl("^.*:G.*:G", label))
+# M_bac <- dplyr::filter(y.bac, grepl("^.*:M.*:M", label)) 
+# T_bac <- dplyr::filter(y.bac, grepl("^.*:T.*:T", label)) 
+# 
+# 
+# # merge fungal data
+# bac <- G_bac %>%
+#   dplyr::full_join(M_bac, by = c("label", "diff", "lwr", "upr", "p adj")) 
+# 
+# bac <- bac %>%
+#   dplyr::full_join(T_bac, by = c("label", "diff", "lwr", "upr", "p adj"))
+# 
+# #filter for significant values
+# bac_signif <- bac %>%
+# filter(bac$`p adj` < .05) 
+# 
+# #view signif
+# bac_signif
+# 
+# #write.table(bac_signif, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/PLFA_bac_month_veg.txt", sep = ",", quote = FALSE, row.names = T)
 
 ```
+
 # **Manually Set Fungal p-values**
 - https://csdaw.github.io/ggprism/articles/pvalues.html
 ```{r fun_signif_plot}
 
-library(ggprism)
-library(dplyr)
-library(tidyverse)
-library(ggpubr)
-library(rstatix)
+# library(ggprism)
+# library(dplyr)
+# library(tidyverse)
+# library(ggpubr)
+# library(rstatix)
+# 
+# 
+# # make tukey hsd dataframe with rstatix package
+# stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
+#   tukey_hsd()
+# 
+# # add column with complete tukey comparison
+# stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
+# 
+# # filter out everything not looking at vegetation:month
+# stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
+# 
+# 
+# #isolate comparisons that are relevant
+# G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
+# M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
+# T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
 
-
-# make tukey hsd dataframe with rstatix package
-stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
-  tukey_hsd()
-
-# add column with complete tukey comparison
-stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
-
-# filter out everything not looking at vegetation:month
-stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
-
-
-#isolate comparisons that are relevant
-G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
-M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
-T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
-
-# merge relevant comparisons to one dataframe
-fun_stat <- G_fun_stat %>%
-  dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
-
-fun_stat <- fun_stat %>%
-  dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
-
-# make a column with only Veg_abrev so that this data set matches with the PLFA data
-fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
-
-#remove vegetation abbreviation from group2
-fun_stat$group2<- gsub(':G','',fun_stat$group2)
-fun_stat$group2<- gsub(':M','',fun_stat$group2)
-fun_stat$group2<- gsub(':T','',fun_stat$group2)
-
-
-#filter out non significant values
-fun_stat <- fun_stat %>%
-filter(fun_stat$p.adj < .05) 
-
-
-library(dplyr)
-
-# select only the necessary columns from the data frame 
-grouped_for_plot_fun <- fun_stat %>%
-  #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
-   mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
-  as_tibble()
-  
-
-# manually add y-position for each p-value
-grouped_for_plot_fun <- grouped_for_plot_fun %>%
-  add_column(y.position = c(40, 35, 30, 50, 25, 45,
-                            40, 35, 30, 25, 45, 
-                            40, 35, 30, 50, 25, 45))
-
-
-
-# merge the p-values with the plot
-fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
+# # merge relevant comparisons to one dataframe
+# fun_stat <- G_fun_stat %>%
+#   dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+# 
+# fun_stat <- fun_stat %>%
+#   dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+# 
+# # make a column with only Veg_abrev so that this data set matches with the PLFA data
+# fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
+# 
+# #remove vegetation abbreviation from group2
+# fun_stat$group2<- gsub(':G','',fun_stat$group2)
+# fun_stat$group2<- gsub(':M','',fun_stat$group2)
+# fun_stat$group2<- gsub(':T','',fun_stat$group2)
+# 
+# 
+# #filter out non significant values
+# fun_stat <- fun_stat %>%
+# filter(fun_stat$p.adj < .05) 
+# 
+# 
+# library(dplyr)
+# 
+# # select only the necessary columns from the data frame 
+# grouped_for_plot_fun <- fun_stat %>%
+#   #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
+#    mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+#   as_tibble()
+#   
+# 
+# # manually add y-position for each p-value
+# grouped_for_plot_fun <- grouped_for_plot_fun %>%
+#   add_column(y.position = c(40, 35, 30, 50, 25, 45,
+#                             40, 35, 30, 25, 45, 
+#                             40, 35, 30, 50, 25, 45))
+# 
+# 
+# 
+# # merge the p-values with the plot
+# fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
 
 
 ```
@@ -531,87 +547,87 @@ fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun)
 # **Manually Set Bacterial p-values**
 ```{r bac_signif_plot}
 
-library(ggprism)
-library(dplyr)
-library(tidyverse)
-library(ggpubr)
-library(rstatix)
+# library(ggprism)
+# library(dplyr)
+# library(tidyverse)
+# library(ggpubr)
+# library(rstatix)
+# 
+# 
+# # make tukey hsd dataframe with rstatix package
+# stat.test.bac <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_bac) %>%
+#   tukey_hsd()
+# 
+# # add column with complete tukey comparison
+# stat.test.bac$full_compar = paste(stat.test.bac$group1, stat.test.bac$group2, sep="-")
+# 
+# # filter out everything not looking at vegtation:month
+# stat.bac <- dplyr::filter(stat.test.bac, grepl("Month:Veg_abrev", term))
 
 
-# make tukey hsd dataframe with rstatix package
-stat.test.bac <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_bac) %>%
-  tukey_hsd()
-
-# add column with complete tukey comparison
-stat.test.bac$full_compar = paste(stat.test.bac$group1, stat.test.bac$group2, sep="-")
-
-# filter out everything not looking at vegtation:month
-stat.bac <- dplyr::filter(stat.test.bac, grepl("Month:Veg_abrev", term))
-
-
-#isolate comparisons that are relevant
-G_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:G.*:G", full_compar))
-M_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:M.*:M", full_compar))
-T_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:T.*:T", full_compar)) 
-
-# merge relevant comparisons to one datafram
-bac_stat <- G_bac_stat %>%
-  dplyr::full_join(M_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
-
-bac_stat <- bac_stat %>%
- dplyr:: full_join(T_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
-
-# make a column with only Veg_abrev so that this dataset matches with the PLFA data
-bac_stat <- separate(data = bac_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
-
-#remove vegetation abbreviation from group2
-bac_stat$group2<- gsub(':G','',bac_stat$group2)
-bac_stat$group2<- gsub(':M','',bac_stat$group2)
-bac_stat$group2<- gsub(':T','',bac_stat$group2)
+# #isolate comparisons that are relevant
+# G_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:G.*:G", full_compar))
+# M_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:M.*:M", full_compar))
+# T_bac_stat <- dplyr::filter(stat.bac, grepl("^.*:T.*:T", full_compar)) 
+# 
+# # merge relevant comparisons to one datafram
+# bac_stat <- G_bac_stat %>%
+#   dplyr::full_join(M_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+# 
+# bac_stat <- bac_stat %>%
+#  dplyr:: full_join(T_bac_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+# 
+# # make a column with only Veg_abrev so that this dataset matches with the PLFA data
+# bac_stat <- separate(data = bac_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
+# 
+# #remove vegetation abbreviation from group2
+# bac_stat$group2<- gsub(':G','',bac_stat$group2)
+# bac_stat$group2<- gsub(':M','',bac_stat$group2)
+# bac_stat$group2<- gsub(':T','',bac_stat$group2)
+# 
+# 
+# #filter out non significant values
+# bac_stat <- bac_stat %>%
+# filter(bac_stat$p.adj < .05) 
 
 
-#filter out non significant values
-bac_stat <- bac_stat %>%
-filter(bac_stat$p.adj < .05) 
-
-
-library(dplyr)
-
-# select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
-grouped_for_plot_bac <- bac_stat %>%
-  #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
-  mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
-  as_tibble()
-  
-#manually add y-position for each p-value
-grouped_for_plot_bac <- grouped_for_plot_bac %>%
-  add_column(y.position = c(55, 51, 46, 62, 43, 59, 
-                            54, 50, 46, 62, 43, 59,
-                            53, 45, 49, 38, 62, 33, 56, 59))
-
-
-# merge the p-values with the plot
-bac_with_p <- PLFA_plot_bac +  add_pvalue(grouped_for_plot_bac)
+# library(dplyr)
+# 
+# # select only the necessary columns from the dataframe and factor Veg_abrev so that the order is correct in the plot
+# grouped_for_plot_bac <- bac_stat %>%
+#   #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
+#   mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+#   as_tibble()
+#   
+# #manually add y-position for each p-value
+# grouped_for_plot_bac <- grouped_for_plot_bac %>%
+#   add_column(y.position = c(55, 51, 46, 62, 43, 59, 
+#                             54, 50, 46, 62, 43, 59,
+#                             53, 45, 49, 38, 62, 33, 56, 59))
+# 
+# 
+# # merge the p-values with the plot
+# bac_with_p <- PLFA_plot_bac +  add_pvalue(grouped_for_plot_bac)
 
 ```
 
 # **Compile Plots**
 ```{r}
 
-library(ggpubr)
-
-figure <- ggarrange(bac_with_p, fun_with_p, 
-          ncol = 1, nrow = 2)
-
-final <- annotate_figure(figure,
-              top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
-               left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90)
-              )
-
-final
-
-library(svglite)
-#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
+# library(ggpubr)
+# 
+# figure <- ggarrange(bac_with_p, fun_with_p, 
+#           ncol = 1, nrow = 2)
+# 
+# final <- annotate_figure(figure,
+#               top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
+#                left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90)
+#               )
+# 
+# final
+# 
+# library(svglite)
+# #ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
 ```
 
 ```{r}
@@ -666,7 +682,7 @@ and Sampleing Periods")+  #change title
 PLFA_ratio
 
 library(svglite)
-ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_bac_biomass.png", plot=PLFA_ratio, width=9, height=7)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fungi_bac_biomass.png", plot=PLFA_ratio, width=9, height=7)
 
 
 # non-repeated measures fungi to bacteria biomass anova
