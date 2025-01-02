@@ -49,7 +49,7 @@ library(dplyr)
 vegetation$Means <-apply(vegetation [,3:7], 1 ,mean)
 
 vegetation$SiteID <- factor(vegetation$SiteID, levels = c("Grass", "Mesquite_Grass", "Mesquite"), 
-                  labels = c("Grass", "Grass-Mesquite", "Mesquite"))
+                  labels = c("Grass", "Ecotone", "Mesquite"))
 
 vegetation$Vegetation <- factor(vegetation$Vegetation, levels = c("Grass", "Mesquite", "Bare"), 
                   labels = c("Grass", "Mesquite", "Bare Soil"))
@@ -60,12 +60,12 @@ library(ggeasy)
 library(ggrepel)
 library(tidyverse)
 
-m_label <- c("Grass-Mesquite")
-names(m_label) <- c("Grass-Mesquite")
+m_label <- c("Ecotone")
+names(m_label) <- c("Ecotone")
 
 veg <- ggplot(vegetation, aes(x="", y=Means, fill=Vegetation)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(~factor(SiteID, levels = c("Grass", "Grass-Mesquite", "Mesquite")), strip.position = "bottom")+
+  facet_wrap(~factor(SiteID, levels = c("Grass", "Ecotone", "Mesquite")), strip.position = "bottom")+
   coord_polar("y", start=0) +
   ggtitle("% Vegetation Cover in Study Sites")+
  theme_linedraw()+
@@ -87,5 +87,5 @@ veg
 #library(svglite)
 #ggsave(file="percent_vegetation_cover.svg", plot=veg, width=9, height=6)
 
-#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/veg_cover.png", plot=veg, width=10, height=7)
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/veg_cover.png", plot=veg, width=10, height=7)
 ```
