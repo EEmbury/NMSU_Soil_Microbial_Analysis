@@ -53,15 +53,17 @@ load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_dada
 sam <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Bacteria/dada2_files/nov_2_metadata.csv", header = TRUE) 
 rownames(sam) <- sam$sample.id
 
-#add month_veg row to data
-sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
+
 
 #adjust sample data labels
 sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
-                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+                  labels = c("Grass", "Ecotone", "Mesquite")) 
 
 sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
                   labels = c("October", "January", "March", "May", "July"))
+
+#add month_veg row to data
+sam$month_veg = paste(sam$Vegetation, sam$Month,  sep=":")
 
 #compile data into phyloseq object
 phylo_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
@@ -152,6 +154,8 @@ summary(anova.sh.veg)
 anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month)
 summary(anova.sh.veg)
 
+
+
 #capture anova table
 sh.veg <- capture.output(summary(anova.sh.veg))
 #write.table(sh.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_shannon_aov.txt", sep = ",", quote = FALSE, row.names = T)
@@ -170,13 +174,28 @@ tukey.sh <- TukeyHSD(anova.sh.veg)
 tukey.sh$`sample_data(rare_phylo)$Month`
 sh.tuk.bac <- capture.output(tukey.sh$`sample_data(rare_phylo)$Month`)
 
+
+
 #write.table(sh.tuk.bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_shannon_tuk.txt", sep = ",", quote = FALSE, row.names = T)
 
 #post hoc
 tukey.sim <- TukeyHSD(anova.sim.veg)
 tukey.sim$`sample_data(rare_phylo)$Month`
 sim.tuk.bac <- capture.output(tukey.sim$`sample_data(rare_phylo)$Month`)
-write.table(sim.tuk.bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_simpson_tuk.txt", sep = ",", quote = FALSE, row.names = T)
+#write.table(sim.tuk.bac, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_simpson_tuk.txt", sep = ",", quote = FALSE, row.names = T)
+
+#getiing tukey letters for plot
+library(multcompView)
+Cld_sim=multcompLetters4(anova.sim.veg, tukey.sim)
+print(Cld_sim)
+Cld_sim= as.data.frame.list(Cld_sim$`sample_data(rare_phylo)$Month`)
+Cld_sim <- tibble::rownames_to_column(Cld_sim, "Month")
+
+Cld_sh=multcompLetters4(anova.sh.veg, tukey.sh)
+print(Cld_sh)
+Cld_sh= as.data.frame.list(Cld_sh$`sample_data(rare_phylo)$Month`)
+Cld_sh <- tibble::rownames_to_column(Cld_sh, "Month")
+
 
 #check anova assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -188,24 +207,68 @@ abline(h=0, col = "red")
 
 
 
+
+
+
 #plot shannon
 alpha_veg_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
-alpha_veg_sh + geom_boxplot()
+x <- alpha_veg_sh + geom_boxplot() 
+x + geom_text(data = Cld_sh,
+            aes(x=Month,y=10,label=Letters))
 
 
-#plot shannon and simpson together
-alpha_mo_sh <- plot_richness(rare_phylo, x = "Month", measures = c("Shannon", "Simpson"))
-bac_alpha <- alpha_mo_sh + 
+#plot shannon 
+alpha_mo_sh <- plot_richness(rare_phylo, x = "Month", measures = c("Shannon"))
+bac_alpha_sh <- alpha_mo_sh + 
   geom_boxplot(show.legend = FALSE, aes(fill=Month)) +
   theme_linedraw()+
-  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="darkgray") +
+  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="lightgray") +
   theme(plot.title = element_text(face = "bold", hjust = 0.5))+
-  ggtitle ("Bacterial Alpha Diversity")+ 
+theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(), axis.title.y = element_blank()) + 
   scale_y_continuous(
-  labels = scales::number_format(accuracy = 0.0001))+ 
+  labels = scales::number_format(accuracy = 0.001))+ 
+  geom_text(data = Cld_sh,
+            aes(x=Month,y=8,label=Letters),
+            vjust = 2,
+            hjust =0.2)+
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
-bac_alpha
+bac_alpha_sh 
 #ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_alpha.png", device = png, plot=bac_alpha, width=7, height=5)
+
+
+#plot simpson 
+alpha_mo_sim <- plot_richness(rare_phylo, x = "Month", measures = c("Simpson"))
+alpha_mo_sim
+bac_alpha_sim <- alpha_mo_sim + 
+  geom_boxplot(show.legend = FALSE, aes(fill=Month)) +
+  theme_linedraw()+
+  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="lightgray") +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(), axis.title.y = element_blank()) + 
+  scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.001))+ 
+  geom_text(data = Cld_sim,
+            aes(x=Month,y=1,label=monospacedLetters),
+            vjust = 2, 
+            hjust = .2)+
+  scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
+bac_alpha_sim 
+
+```
+
+```{r}
+figure <- ggarrange(bac_alpha_sh, bac_alpha_sim, 
+          ncol = 2)
+figure
+
+final <- annotate_figure(figure,
+              top = text_grob("Bacterial Alpha Diversity", color = "black", face = "bold", size = 12),
+              left = text_grob("Alpha Deversity Measure", color = "black", rot = 90), 
+              bottom = text_grob("Month", color = "black"))
+              
+final
+
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_alpha_with_letters.png", device = png, plot=final, width=7, height=5)
 ```
 
 
