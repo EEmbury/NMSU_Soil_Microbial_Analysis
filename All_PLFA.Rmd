@@ -70,7 +70,6 @@ PLFA_plot_fun <- ggplot(PLFA_fun,
   facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
  scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 40))+ # change y-axis to percentage
   theme_linedraw()+
-  stat_summary(fun=mean, geom="point", shape=18, color="darkgray") +
  theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
        axis.title.y = element_blank()) + 
   #ggtitle ("% of Fungi in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
@@ -109,7 +108,6 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
   facet_grid(Type~Veg_abrev, labeller = labeller(Veg_abrev = veg_types))+
   scale_y_continuous(labels = scales::percent_format(scale = 1))+ # change y-axis to percentage
   theme_linedraw()+
-  stat_summary(fun=mean, geom="point", shape=18, color="darkgray") +
   theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(),
        axis.title.y = element_blank()) + 
   #ggtitle ("% of Bacteria in Total Biomass Across Vegetation Types and Sampleing Periods")+  #change title
@@ -121,21 +119,7 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
 
 ```
 
-**Summary Stats**
 
-```{r}
-
-fun_avg <- PLFA_fun_rm_outlier  %>%
-  group_by(Veg_abrev) %>%
-  summarise_at(vars(Total_Percent_Biomass), list(name = mean))
-fun_avg
-
-bac_avg <- PLFA_bac_rm_outlier  %>%
-  group_by(Veg_abrev) %>%
-  summarise_at(vars(Total_Percent_Biomass), list(name = mean))
-bac_avg
-
-```
 
 # **Fungal Stats**
 repeated meatures
@@ -218,6 +202,50 @@ emmeans <- emmeans(m, ~Month | Veg_abrev)
 pairs(emmeans, adjust = "Tukey")
 
 ```
+Add tukey HSD letters to plot (fungi)
+```{r}
+
+model_means <- emmeans(m, ~Month | Veg_abrev)
+pairs(emmeans, adjust = "Tukey")
+
+# add letters to each mean
+model_means_cld <- cld(object = model_means,
+                       adjust = "sidak",
+                       Letters = letters,
+                       alpha = 0.05)
+
+
+model_means_cld 
+
+
+
+ fun_with_p <- PLFA_plot_fun +
+  # red mean value
+  geom_point(
+    data = model_means_cld,
+    aes(y = emmean, x = Month),
+    size = 2,
+    shape=18,
+    color = "lightgrey"
+  ) +
+  # red letters
+  geom_text(
+    data = model_means_cld,
+    aes(
+      y = emmean,
+      x = Month,
+      label = str_trim(.group)
+    ),
+    position = position_nudge(x = 0.1),
+    hjust = 0,
+    vjust = -2.5,
+    color = "black"
+  )
+ 
+  fun_with_p
+```
+
+
 
 ```{r plfa_statistics_fungi}
 # 
@@ -381,17 +409,61 @@ library(emmeans)
 get_anova_table(plfa_aov_bac, correction = "GG")
 
 #get tukey p-values
-m <- lme4::lmer(Total_Percent_Biomass ~ Month*Veg_abrev + (1|Site), data = PLFA_bac_rm_outlier)
-summary(m)
-emmeans <- emmeans(m, ~Veg_abrev)
+m_bac <- lme4::lmer(Total_Percent_Biomass ~ Month*Veg_abrev + (1|Site), data = PLFA_bac_rm_outlier)
+summary(m_bac)
+emmeans <- emmeans(m_bac, ~Veg_abrev)
 pairs(emmeans, adjust = "Tukey")
 
-emmeans <- emmeans(m, ~Month)
+emmeans <- emmeans(m_bac, ~Month)
 pairs(emmeans, adjust = "Tukey")
 
-emmeans <- emmeans(m, ~Month | Veg_abrev)
+emmeans <- emmeans(m_bac, ~Month | Veg_abrev)
 pairs(emmeans, adjust = "Tukey")
 
+```
+
+Add tukey HSD letters to plot (bacteria)
+https://schmidtpaul.github.io/DSFAIR/compactletterdisplay.html 
+```{r}
+
+model_means_bac <- emmeans(m_bac, ~Month | Veg_abrev)
+pairs(emmeans, adjust = "Tukey")
+
+# add letters to each mean
+model_means_cld_bac <- cld(object = model_means_bac,
+                       adjust = "sidak",
+                       Letters = letters,
+                       alpha = 0.05)
+
+
+model_means_cld_bac
+
+
+
+ bac_with_p <- PLFA_plot_bac +
+  # red mean value
+  geom_point(
+    data = model_means_cld_bac,
+    aes(y = emmean, x = Month),
+    size = 2,
+    shape=18,
+    color = "lightgrey"
+  ) +
+  # red letters
+  geom_text(
+    data = model_means_cld,
+    aes(
+      y = emmean,
+      x = Month,
+      label = str_trim(.group)
+    ),
+    position = position_nudge(x = 0.1),
+    hjust = 0,
+    vjust = -17.5,
+    color = "black"
+  )
+ 
+  bac_with_p
 ```
 
 ```{r plfa_statistics_bacterial}
@@ -473,74 +545,92 @@ pairs(emmeans, adjust = "Tukey")
 
 ```
 
+
+**Summary Stats**
+
+```{r}
+
+fun_avg <- PLFA_fun_rm_outlier  %>%
+  group_by(Veg_abrev) %>%
+  summarise_at(vars(Total_Percent_Biomass), list(name = mean))
+fun_avg
+
+bac_avg <- PLFA_bac_rm_outlier  %>%
+  group_by(Veg_abrev) %>%
+  summarise_at(vars(Total_Percent_Biomass), list(name = mean))
+bac_avg
+
+```
+
 # **Manually Set Fungal p-values**
 - https://csdaw.github.io/ggprism/articles/pvalues.html
 ```{r fun_signif_plot}
 
-# library(ggprism)
-# library(dplyr)
-# library(tidyverse)
-# library(ggpubr)
-# library(rstatix)
+ library(ggprism)
+ library(dplyr)
+ library(tidyverse)
+ library(ggpubr)
+ library(rstatix)
 # 
 # 
 # # make tukey hsd dataframe with rstatix package
-# stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
-#   tukey_hsd()
+ stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
+   tukey_hsd()
 # 
 # # add column with complete tukey comparison
-# stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
+ stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
 # 
 # # filter out everything not looking at vegetation:month
-# stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
+ stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
 # 
 # 
 # #isolate comparisons that are relevant
-# G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
-# M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
-# T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
+ G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
+ M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
+ T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
 
 # # merge relevant comparisons to one dataframe
-# fun_stat <- G_fun_stat %>%
-#   dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+ fun_stat <- G_fun_stat %>%
+   dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 # 
-# fun_stat <- fun_stat %>%
-#   dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+ fun_stat <- fun_stat %>%
+   dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
 # 
 # # make a column with only Veg_abrev so that this data set matches with the PLFA data
-# fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
+ fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
 # 
 # #remove vegetation abbreviation from group2
-# fun_stat$group2<- gsub(':G','',fun_stat$group2)
-# fun_stat$group2<- gsub(':M','',fun_stat$group2)
-# fun_stat$group2<- gsub(':T','',fun_stat$group2)
+ fun_stat$group2<- gsub(':G','',fun_stat$group2)
+ fun_stat$group2<- gsub(':M','',fun_stat$group2)
+ fun_stat$group2<- gsub(':T','',fun_stat$group2)
 # 
 # 
 # #filter out non significant values
-# fun_stat <- fun_stat %>%
-# filter(fun_stat$p.adj < .05) 
+ fun_stat <- fun_stat %>%
+ filter(fun_stat$p.adj < .05) 
 # 
 # 
-# library(dplyr)
-# 
+ library(dplyr)
+ 
+
 # # select only the necessary columns from the data frame 
-# grouped_for_plot_fun <- fun_stat %>%
-#   #select(group1, group2, p.adj, p.adj.signif, Veg_abrev) %>%
-#    mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
-#   as_tibble()
+ grouped_for_plot_fun <- fun_stat %>%
+  dplyr::select(group1, group2, p.adj, p.adj.signif, Veg_abrev)%>%
+   mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+   as_tibble()
 #   
-# 
+# group1, group2, p.adj, p.adj.signif, Veg_abrev
 # # manually add y-position for each p-value
-# grouped_for_plot_fun <- grouped_for_plot_fun %>%
-#   add_column(y.position = c(40, 35, 30, 50, 25, 45,
-#                             40, 35, 30, 25, 45, 
-#                             40, 35, 30, 50, 25, 45))
+grouped_for_plot_fun <- grouped_for_plot_fun %>%
+   add_column(y.position = c(40, 35, 30, 50, 25, 45,
+                             40, 35, 30, 25, 45, 
+                            40, 35, 30, 50, 25, 45))
 # 
 # 
 # 
 # # merge the p-values with the plot
-# fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
-
+ fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
+fun_with_p
 
 ```
 
@@ -614,20 +704,20 @@ pairs(emmeans, adjust = "Tukey")
 # **Compile Plots**
 ```{r}
 
-# library(ggpubr)
+ library(ggpubr)
 # 
-# figure <- ggarrange(bac_with_p, fun_with_p, 
-#           ncol = 1, nrow = 2)
+ figure <- ggarrange(bac_with_p, fun_with_p, 
+         ncol = 1, nrow = 2)
 # 
-# final <- annotate_figure(figure,
-#               top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
-#                left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90)
-#               )
+ final <- annotate_figure(figure,
+               top = text_grob("Percentage of Bacterial and Fungal Biomass Across Vegetation Types and Sampling Periods", color = "black", face = "bold", size = 12),
+                left = text_grob("% of Total Microbial Biomass", color = "black", rot = 90)
+               )
 # 
-# final
+ final
 # 
-# library(svglite)
-# #ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa.png", plot=final, width=9, height=7)
+ library(svglite)
+ ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa_tukeyhsd_lettters.png", plot=final, width=9, height=7)
 ```
 
 ```{r}
