@@ -52,7 +52,7 @@ library(ggplot2)
 veg_types <- c(
   "M" = "Mesquite",
   "G" = "Grass", 
-  "T" = "Mesquite-Grass"
+  "T" = "Ecotone"
 )
 
 
@@ -91,7 +91,7 @@ library(ggplot2)
 veg_types <- c(
   "M" = "Mesquite",
   "G" = "Grass", 
-  "T" = "Grass-Mesquite"
+  "T" = "Ecotone"
 )
 
 library(dplyr)
@@ -115,7 +115,7 @@ PLFA_plot_bac <- ggplot(PLFA_bac,
          axis.text.x = element_blank()) + 
   scale_fill_manual(values=c("October" ="#c1292e", "January" = "#e1bc29", "March" = "#679436", "May" = "#4895ef" , "July" ="#8187dc"), name = "Month") #add custom colors and change legend name
 
-
+PLFA_plot_bac
 
 ```
 
@@ -574,63 +574,63 @@ bac_avg
 # 
 # 
 # # make tukey hsd dataframe with rstatix package
- stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
-   tukey_hsd()
+#  stat.test.fun <- aov(Total_Percent_Biomass ~ Month*Veg_abrev, data = PLFA_fun2) %>%
+#    tukey_hsd()
+# # 
+# # # add column with complete tukey comparison
+#  stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
+# # 
+# # # filter out everything not looking at vegetation:month
+#  stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
+# # 
+# # 
+# # #isolate comparisons that are relevant
+#  G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
+#  M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
+#  T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
 # 
-# # add column with complete tukey comparison
- stat.test.fun$full_compar = paste(stat.test.fun$group1, stat.test.fun$group2, sep="-")
+# # # merge relevant comparisons to one dataframe
+#  fun_stat <- G_fun_stat %>%
+#    dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+# # 
+#  fun_stat <- fun_stat %>%
+#    dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
+# # 
+# # # make a column with only Veg_abrev so that this data set matches with the PLFA data
+#  fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
+# # 
+# # #remove vegetation abbreviation from group2
+#  fun_stat$group2<- gsub(':G','',fun_stat$group2)
+#  fun_stat$group2<- gsub(':M','',fun_stat$group2)
+#  fun_stat$group2<- gsub(':T','',fun_stat$group2)
+# # 
+# # 
+# # #filter out non significant values
+#  fun_stat <- fun_stat %>%
+#  filter(fun_stat$p.adj < .05) 
+# # 
+# # 
+#  library(dplyr)
+#  
 # 
-# # filter out everything not looking at vegetation:month
- stat.fun <- dplyr::filter(stat.test.fun, grepl("Month:Veg_abrev", term))
-# 
-# 
-# #isolate comparisons that are relevant
- G_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:G.*:G", full_compar))
- M_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:M.*:M", full_compar))
- T_fun_stat <- dplyr::filter(stat.fun, grepl("^.*:T.*:T", full_compar)) 
-
-# # merge relevant comparisons to one dataframe
- fun_stat <- G_fun_stat %>%
-   dplyr::full_join(M_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
-# 
- fun_stat <- fun_stat %>%
-   dplyr::full_join(T_fun_stat, by = c("term", "group1", "group2", "null.value", "estimate", "conf.low", "conf.high", "p.adj", "p.adj.signif", "full_compar")) 
-# 
-# # make a column with only Veg_abrev so that this data set matches with the PLFA data
- fun_stat <- separate(data = fun_stat, col = group1, into = c("group1", "Veg_abrev"), sep = "\\:")
-# 
-# #remove vegetation abbreviation from group2
- fun_stat$group2<- gsub(':G','',fun_stat$group2)
- fun_stat$group2<- gsub(':M','',fun_stat$group2)
- fun_stat$group2<- gsub(':T','',fun_stat$group2)
-# 
-# 
-# #filter out non significant values
- fun_stat <- fun_stat %>%
- filter(fun_stat$p.adj < .05) 
-# 
-# 
- library(dplyr)
- 
-
-# # select only the necessary columns from the data frame 
- grouped_for_plot_fun <- fun_stat %>%
-  dplyr::select(group1, group2, p.adj, p.adj.signif, Veg_abrev)%>%
-   mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
-   as_tibble()
-#   
-# group1, group2, p.adj, p.adj.signif, Veg_abrev
-# # manually add y-position for each p-value
-grouped_for_plot_fun <- grouped_for_plot_fun %>%
-   add_column(y.position = c(40, 35, 30, 50, 25, 45,
-                             40, 35, 30, 25, 45, 
-                            40, 35, 30, 50, 25, 45))
-# 
-# 
-# 
-# # merge the p-values with the plot
- fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
-fun_with_p
+# # # select only the necessary columns from the data frame 
+#  grouped_for_plot_fun <- fun_stat %>%
+#   dplyr::select(group1, group2, p.adj, p.adj.signif, Veg_abrev)%>%
+#    mutate(Veg_abrev = factor(Veg_abrev, levels = c("G","T","M"))) %>%
+#    as_tibble()
+# #   
+# # group1, group2, p.adj, p.adj.signif, Veg_abrev
+# # # manually add y-position for each p-value
+# grouped_for_plot_fun <- grouped_for_plot_fun %>%
+#    add_column(y.position = c(40, 35, 30, 50, 25, 45,
+#                              40, 35, 30, 25, 45, 
+#                             40, 35, 30, 50, 25, 45))
+# # 
+# # 
+# # 
+# # # merge the p-values with the plot
+#  fun_with_p <- PLFA_plot_fun +  add_pvalue(grouped_for_plot_fun) 
+# fun_with_p
 
 ```
 
@@ -717,7 +717,7 @@ fun_with_p
  final
 # 
  library(svglite)
- ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa_tukeyhsd_lettters.png", plot=final, width=9, height=7)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/all_plfa_tukeyhsd_lettters.png", plot=final, width=9, height=7)
 ```
 
 ```{r}
