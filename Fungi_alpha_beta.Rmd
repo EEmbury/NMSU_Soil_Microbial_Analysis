@@ -60,7 +60,7 @@ sam$month_veg = paste(sam$month, sam$vegetation, sep="-")
 
 #adjust sample data labels
 sam$Vegetation <- factor(sam$vegetation, levels = c("Grass", "Mesquite_grass", "Mesquite"), 
-                  labels = c("Grass", "Grass-Mesquite", "Mesquite")) 
+                  labels = c("Grass", "Ecotone", "Mesquite")) 
 
 sam$Month <- factor(sam$month, levels = c("Oct", "Jan", "Mar", "May", "Jul"), 
                   labels = c("October", "January", "March", "May", "July"))
@@ -136,7 +136,7 @@ rare_phylo <- phyloseq(otu_table(rare, taxa_are_rows = FALSE),
 richness <- estimate_richness(rare_phylo)
 
 #Shannon
-anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity1)
+anova.sh.veg = aov(richness$Shannon ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity)
 summary(anova.sh.veg)
 
 sh.veg <- capture.output(summary(anova.sh.veg))
@@ -147,7 +147,7 @@ tukey.sh <- TukeyHSD(anova.sh.veg)
 tukey.sh$`sample_data(rare_phylo)$Vegetation`
 
 #Simpson
-anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity1)
+anova.sim.veg = aov(richness$Simpson ~ sample_data(rare_phylo)$Vegetation*sample_data(rare_phylo)$Month + sample_data(rare_phylo)$proximity)
 summary(anova.sim.veg)
 
 #post hoc
@@ -156,6 +156,20 @@ tukey.sim$`sample_data(rare_phylo)$Vegetation`
 
 sim.veg <- capture.output(summary(anova.sim.veg))
 #write.table(sim.veg, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fun_simpson_aov.txt", sep = ",", quote = FALSE, row.names = T)
+
+
+#getiing tukey letters for plot
+library(multcompView)
+Cld_sim=multcompLetters4(anova.sim.veg, tukey.sim)
+print(Cld_sim)
+Cld_sim= as.data.frame.list(Cld_sim$`sample_data(rare_phylo)$Vegetation`)
+Cld_sim <- tibble::rownames_to_column(Cld_sim, "Vegetation")
+
+Cld_sh=multcompLetters4(anova.sh.veg, tukey.sh)
+print(Cld_sh)
+Cld_sh= as.data.frame.list(Cld_sh$`sample_data(rare_phylo)$Vegetation`)
+Cld_sh <- tibble::rownames_to_column(Cld_sh, "Vegetation")
+
 
 #check anova assumptions
 par(mfrow = c(1,2)) #puts the plots next to each other
@@ -170,24 +184,63 @@ abline(h=0, col = "red")
 alpha_veg_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
 alpha_veg_sh + geom_boxplot()
 
-alpha_mo_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon", "Simpson"))
-fun_alpha <- alpha_mo_sh + 
+#shannon plot
+alpha_mo_sh <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Shannon"))
+fun_alpha_sh <- alpha_mo_sh + 
   geom_boxplot(show.legend = FALSE, aes(fill=Vegetation)) +
   theme_linedraw()+
-  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="darkgray") +
+  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="lightgray") +
   theme(plot.title = element_text(face = "bold", hjust = 0.5))+
   scale_y_continuous(
   labels = scales::number_format(accuracy = 0.1))+ 
-  ggtitle ("Fungal Alpha Diversity")+  #change title
- scale_fill_manual(values=c("Mesquite" ="#c1292e", "Grass-Mesquite" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))
+   theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(), axis.title.y = element_blank()) + 
+  geom_text(data = Cld_sh,
+            aes(x=Vegetation,y=5,label=monospacedLetters),
+            vjust = 1, 
+            hjust = .2)+
+ scale_fill_manual(values=c("Mesquite" ="#c1292e", "Ecotone" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))
 
-fun_alpha
+fun_alpha_sh
 
-ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_alpha.png", device = png, plot=fun_alpha, width=7, height=5)
+
+#simpson plot
+alpha_mo_sim <- plot_richness(rare_phylo, x = "Vegetation", measures = c("Simpson"))
+alpha_mo_sim
+
+fun_alpha_sim <- alpha_mo_sim + 
+  geom_boxplot(show.legend = FALSE, aes(fill=Vegetation)) +
+  theme_linedraw()+
+  stat_summary(fun=mean, geom="point", shape=18, size = 2, color="lightgray") +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))+
+  scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.1))+ 
+   theme(axis.title.x = element_blank(), axis.text.x = element_text(), axis.ticks.x   = element_blank(), axis.title.y = element_blank()) + 
+  geom_text(data = Cld_sim,
+            aes(x=Vegetation,y=1,label=monospacedLetters),
+            vjust = 1, 
+            hjust = .2)+
+ scale_fill_manual(values=c("Mesquite" ="#c1292e", "Ecotone" = "#e1bc29", "Grass" = "#679436", name = "Vegetation"))
+
+fun_alpha_sim
+
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_alpha.png", device = png, plot=fun_alpha, width=7, height=5)
 ```
 
+```{r}
+figure <- ggarrange(fun_alpha_sh, fun_alpha_sim, 
+          ncol = 2)
+figure
 
+final <- annotate_figure(figure,
+              top = text_grob("Fungal Alpha Diversity", color = "black", face = "bold", size = 12),
+              left = text_grob("Alpha Deversity Measure", color = "black", rot = 90), 
+              bottom = text_grob("Month", color = "black"))
+              
+final
 
+ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/fun_alpha_with_letters.png", device = png, plot=final, width=7, height=5)
+
+```
 
 # **Beta Diversity**
 
