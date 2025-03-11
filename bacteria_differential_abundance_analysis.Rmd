@@ -93,7 +93,7 @@ phylo_rm_contaminat <- prune_taxa(!contamdf.prev05$contaminant, phylo_raw)
 phylo_rm_contaminat #after
 
 #remove any left over controls 
-phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 129)
+phylo_rm_contaminat_rm_cntrl = subset_samples(phylo_rm_contaminat, sample.id != "CONTROL1" & sample.id != "CONTROL2" & sample.id != "CONTROL3" & sample.id != 93)
 
 
 ## remove unknowns and archaea, keep only bacteria
@@ -114,6 +114,9 @@ phylo_rm_archaea
   
   
 ```{r DAA_with_ANCOMBC}
+
+### DAA by vegetation type
+
 library(scater)
 library(ANCOMBC)
 library(tidyverse)
@@ -158,6 +161,8 @@ output = ancombc2(data = tse, assay_name = "counts", tax_level = "Class",
 ```
 
 ```{r visualize_ANCOMBC2}
+
+### visualize pairwise comparison
 
 ## From tutorial: "4.3 Structural zeros (taxon presence/absence)"
 tab_zero = output$zero_ind
@@ -235,11 +240,11 @@ df_fig_pair2 = res_pair %>%
                       diff_vegetationMesquite_grass == 1 | 
                       diff_vegetationMesquite_grass_vegetationMesquite == 1) %>%
     dplyr::mutate(M = ifelse(passed_ss_vegetationMesquite == 1 & diff_vegetationMesquite == 1, 
-                                "white", "black"),
+                                "black", "lightgrey"),
                   MG = ifelse(passed_ss_vegetationMesquite_grass == 1 & diff_vegetationMesquite_grass == 1, 
-                                "white", "black"),
+                                "black", "lightgrey"),
                   MGM = ifelse(passed_ss_vegetationMesquite_grass_vegetationMesquite == 1 & diff_vegetationMesquite_grass_vegetationMesquite == 1, 
-                                "white", "black")) %>%
+                                "black", "lightgrey")) %>%
     tidyr::pivot_longer(cols = M:MGM, 
                         names_to = "group", values_to = "color") %>%
     dplyr::arrange(taxon)
@@ -249,12 +254,12 @@ df_fig_pair = df_fig_pair1 %>%
 
 df_fig_pair$group = recode(df_fig_pair$group, 
                           `M` = "Mesquite - Grass",
-                          `MG` = "GM - Grass",
-                          `MGM` = "GM - Mesquite")
+                          `MG` = "Ecotone - Grass",
+                          `MGM` = "Ecotone - Mesquite")
 df_fig_pair$group = factor(df_fig_pair$group, 
                           levels = c("Mesquite - Grass",
-                                     "GM - Grass", 
-                                     "GM - Mesquite"))
+                                     "Ecotone - Grass", 
+                                     "Ecotone - Mesquite"))
 
 lo = floor(min(df_fig_pair$value))
 up = ceiling(max(df_fig_pair$value))
@@ -262,21 +267,22 @@ mid = (lo + up)/2
 fig_pair = df_fig_pair %>%
     ggplot(aes(x = group, y = taxon, fill = value)) + 
     geom_tile(color = "black") +
-    scale_fill_gradient2(low = "#c1292e", high = "#679436", mid = "white", 
+    scale_fill_gradient2(low = "#4ba3c3", high = "#ba324f", mid = "lightgrey", 
                          na.value = "white", midpoint = 0, limit = c(lo, up),
                          name = NULL) +
     geom_text(aes(group, taxon, label = value, color = color), size = 4) +
     scale_color_identity(guide = FALSE) +
-    labs(x = NULL, y = NULL, title = "Pairwise log fold changes - Bacteria") +
+    labs(x = NULL, y = NULL, title = "Pairwise log-fold changes: Bacteria") +
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
 fig_pair
 
-ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_daa.png", device = png, plot=fig_pair, width=7, height=5)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_daa_changecolor.png", device = png, plot=fig_pair, width=7, height=5)
 ```
 
 ```{r}
-#months
+
+### DAA by vegetation type
 
 set.seed(123)
 # It should be noted that we have set the number of bootstrap samples (B) equal 
