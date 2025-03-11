@@ -158,6 +158,9 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
       - *"...indicate Group 3 because it appears in all sites belonging to this group (i.e., B = 1.0000) and it is largely (but not completely) restricted to it (i.e., A = 0.8278)."*
       
 ```{r}
+#### indicator species analysis using multipatt
+#### used for final publication
+
 library(indicspecies)
 options(max.print=1000000)
 
@@ -171,8 +174,11 @@ options(max.print=1000000)
 summary(visa, indvalcomp=TRUE, A = 0.6, B = 0.6)
 
 summary <- capture.output(summary(visa, indvalcomp=TRUE, A = 0.6, B = 0.6))
-write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_indicators_multipatt.csv")
+#write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_indicators_multipatt.csv")
 
+
+
+#### indicator species analysis using "indicators"
 #using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
 
 # vegetation
@@ -204,43 +210,70 @@ bacterial_indicators <- read.csv("bacteria_indicators_multipatt.csv")
 taxa <- merge(bacterial_indicators, taxadf, 
                           by = 'sample.id', all = FALSE)
 
-write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_indicators_multipatt_taxa.csv")
-
-
-
-##########
-
-mg_species <- as.data.frame(sc_mg$finalsplist)
-mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
-mg_species$vegetation <- "Grass-Mesquite"
-
-m_species <- as.data.frame(sc_m$finalsplist)
-m_species$sample.id <- m_species$`sc_m$finalsplist`
-m_species$vegetation <- "Mesquite"
-
-g_species <- as.data.frame(sc_g$finalsplist)
-g_species$sample.id <- g_species$`sc_g$finalsplist`
-g_species$vegetation <- "Grass"
-
-
-### get taxa info and export tables
-mg_indic_species <- merge(mg_species, taxadf, 
-                          by = 'sample.id', all = FALSE)
-mg_indic_species
-#write.table(mg_indic_species, file = "~/Desktop/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
-
-m_indic_species <- merge(m_species, taxadf, 
-                          by = 'sample.id', all = FALSE)
-m_indic_species
-
-#write.table(m_indic_species, file = "~/Desktop/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
-
-g_indic_species <- merge(g_species, taxadf, 
-                          by = 'sample.id', all = FALSE)
-g_indic_species
-#write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+#write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_indicators_multipatt_all_taxa.csv")
 
 ```
+
+```{r}
+#### old code, not used for final publication
+# ##########
+# 
+# mg_species <- as.data.frame(sc_mg$finalsplist)
+# mg_species$sample.id <- mg_species$`sc_mg$finalsplist`
+# mg_species$vegetation <- "Grass-Mesquite"
+# 
+# m_species <- as.data.frame(sc_m$finalsplist)
+# m_species$sample.id <- m_species$`sc_m$finalsplist`
+# m_species$vegetation <- "Mesquite"
+# 
+# g_species <- as.data.frame(sc_g$finalsplist)
+# g_species$sample.id <- g_species$`sc_g$finalsplist`
+# g_species$vegetation <- "Grass"
+# 
+# 
+# ### get taxa info and export tables
+# mg_indic_species <- merge(mg_species, taxadf, 
+#                           by = 'sample.id', all = FALSE)
+# mg_indic_species
+# #write.table(mg_indic_species, file = "~/Desktop/bac_mg_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# m_indic_species <- merge(m_species, taxadf, 
+#                           by = 'sample.id', all = FALSE)
+# m_indic_species
+# 
+# #write.table(m_indic_species, file = "~/Desktop/bac_m_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+# 
+# g_indic_species <- merge(g_species, taxadf, 
+#                           by = 'sample.id', all = FALSE)
+# g_indic_species
+# #write.table(g_indic_species, file = "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bac_g_indicators.txt", sep = ",", quote = FALSE, row.names = T)
+
+```
+
+```{r FAPROTAX}
+
+# #FAPROTAXFAPROTAX requires one column named "taxonomy" that follows this format. 
+# #k__Fungi;p__Basidiomycota;c__Agaricomycetes;o__Corticiales;f__Corticiaceae;g__Laetisaria;s__Laetisaria_fuciformis
+# 
+# #Do this by pasting the information from the taxonomic ranks into a column separated by ';'
+taxa$Kingdom <- paste("k__", taxa$Kingdom)
+taxa$Phylum <- paste("p__", taxa$Phylum)
+taxa$Class <- paste("c__", taxa$Class)
+taxa$Order <- paste("o__", taxa$Order)
+taxa$Family <- paste("f__", taxa$Family)
+taxa$Genus <- paste("g__", taxa$Genus)
+taxa$Species <- paste("s__", taxa$Species)
+
+taxa$taxonomy <- paste(taxa$Kingdom,taxa$Phylum, taxa$Class, taxa$Order, taxa$Family, taxa$Genus, taxa$Species, sep=";")
+
+taxa_final <- taxa[, -c(2:5, 7:23)] 
+
+
+write.table(taxa_final, "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Bacteria/FAPROTAX_1.2.10/Bac_indicspecies.tsv", row.names=FALSE, sep="\t")
+```
+
+python3 	collapse_table.py -i Bac_indicspecies.tsv -o functional_table.tsv -g FAPROTAX.txt -c "#" -d "taxonomy" --column_names_are_in last_comment_line -r report
+
 
 - https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/isa/
 - https://cran.r-project.org/web/packages/indicspecies/vignettes/IndicatorSpeciesAnalysis.html#additional-functions-to-estimate-and-test-the-association-between-species-and-groups-of-sites 
