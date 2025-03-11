@@ -151,6 +151,9 @@ OTU_taxa_merge <- merge(OTU1, taxadf, by.y= "sample.id")
       - *"indicator of Group 1 because it occurs in sites belonging to this group only (i.e., A = 1.0000), although not all sites belonging to Group 1 include the species (i.e., B = 0.8235)."*
       - *"...indicate Group 3 because it appears in all sites belonging to this group (i.e., B = 1.0000) and it is largely (but not completely) restricted to it (i.e., A = 0.8278)."*
 ```{r isa}
+
+#### indicator species analysis using multipatt
+#### used for final publication
 library(indicspecies)
 options(max.print=1000000)
 
@@ -162,6 +165,10 @@ summary(visa, indvalcomp=TRUE, A = 0.9, B = 0.5)
 
 summary <- capture.output(summary(visa, indvalcomp=TRUE, A = 0.9, B = 0.5))
 #write.csv(summary,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt.csv")
+
+
+#### indicator species analysis using "indicators"
+
 
 #using the indicspecies function "indicators" the variables At and Bt are adjusted for each vegetation type to get an appropriate quantity of indicators
 
@@ -198,6 +205,11 @@ taxa <- merge(fungal_indicators, taxadf,
 
 #write.csv(taxa,"~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/fungal_indicators_multipatt_taxa_all.csv")
 
+```
+
+```{r}
+
+#### old code, not used for final publication
 # ######
 # 
 # 
@@ -234,6 +246,9 @@ taxa <- merge(fungal_indicators, taxadf,
 ```
 
 ```{r funguild}
+
+### FUNGuild assessment of indicator species
+
 # #FUNGuild requires one column named "taxonomy" that follows this format. 
 # #k__Fungi;p__Basidiomycota;c__Agaricomycetes;o__Corticiales;f__Corticiaceae;g__Laetisaria;s__Laetisaria_fuciformis
 # 
@@ -267,14 +282,22 @@ FUNGuild made assignments on 59 OTUs, these have been saved to FunGuild_indicspe
 NEED TO ADD THE DEREPLICATED TAXA BACK TO SPREADSHEET
 
 ```{r}
-
+#read in guild data
 guilds <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/FunGuild_indicspecies.guilds2.csv", header = TRUE)
 
 guild_indic_data <- merge(guilds, taxa, 
                           by = 'sample.id', all = FALSE)
 
 
-write.csv(guild_indic_data, "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/indicspecies_with_guild.csv", row.names = FALSE)
+#write.csv(guild_indic_data, "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/indicspecies_with_guild.csv", row.names = FALSE)
+
+# count occurrence of each trophic mode by vegetation type
+guild_taxa <- read.csv("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/indicspecies_with_guild.csv", header = TRUE)
+
+agg_df <- aggregate(guild_taxa$Trophic.Mode, by=list(guild_taxa$Vegetation, guild_taxa$Trophic.Mode), FUN=length)
+agg_df
+#write.csv(agg_df, "~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/Fungi/indicspecies_count_per_trophic_mode.csv", row.names = FALSE)
+
 ```
 
 ```{r session_info}
