@@ -99,17 +99,6 @@ phylo_rm_cntrl = subset_samples(phylo_raw, sample.id != "Control1" & sample.id !
 - https://github.com/zdk123/SpiecEasi
 - https://psbweb05.psb.ugent.be/conet/microbialnetworks/spieceasi.php
 
-- https://rdrr.io/github/taowenmicro/ggClusterNet/man/corMicro.html (ggClusterNet)
-
-
-**this** paper has code availability https://doi.org/10.1038/s41522-021-00263-y
-          https://github.com/bing-g/AD-BW-network/blob/main/code-co-occurrence-network.R 
-          
-
-***this** paper also has code availability https://doi.org/10.1002/imt2.71 (much better detail will follow this)
-
-
-
 
 #**Generate Network**
 
@@ -239,11 +228,12 @@ g1
 
 
 
-### trying to plot ###
+### plots ###
+# plots are exported from R and built using Gephi
 
-soil_amp_network$Grass$save_network(filepath = "fungi_grass_network.gexf")
-soil_amp_network$Mesquite$save_network(filepath = "fungi_mesquite_network.gexf")
-soil_amp_network$GrassMesquite$save_network(filepath = "fungi_grassmesquite_network.gexf")
+# soil_amp_network$Grass$save_network(filepath = "fungi_grass_network.gexf")
+# soil_amp_network$Mesquite$save_network(filepath = "fungi_mesquite_network.gexf")
+# soil_amp_network$GrassMesquite$save_network(filepath = "fungi_grassmesquite_network.gexf")
 
 # calculate network attributes
 soil_amp_network$Grass$cal_network_attr()
@@ -258,7 +248,7 @@ soil_amp_network$Mesquite$cal_network_attr()
 soil_amp_network$Mesquite$res_network_attr
 
 ```
-
+* The following code are various attempts that were not utilized in the final publication
 
 ```{r}
 # library(SpiecEasi)
