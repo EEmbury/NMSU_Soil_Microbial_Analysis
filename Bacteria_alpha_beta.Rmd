@@ -44,9 +44,9 @@ library(dplyr)
 library(tidyverse)
 library(vegan)
 
-
+#load otu tables and taxa table
 load("~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/bacteria_dada2_data.RData") 
-#contains taxa and otu table
+
 
 
 #import metadata
@@ -257,24 +257,29 @@ bac_alpha_sim
 ```
 
 ```{r}
+#combine figures into one
+ library(ggpubr)
+
 figure <- ggarrange(bac_alpha_sh, bac_alpha_sim, 
           ncol = 2)
 figure
 
 final <- annotate_figure(figure,
               top = text_grob("Bacterial Alpha Diversity", color = "black", face = "bold", size = 12),
-              left = text_grob("Alpha Deversity Measure", color = "black", rot = 90), 
+              left = text_grob("Alpha Diversity Measure", color = "black", rot = 90), 
               bottom = text_grob("Month", color = "black"))
               
 final
 
-ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_alpha_with_letters.png", device = png, plot=final, width=7, height=5)
+#ggsave(file="~/Desktop/Master_Data/Masters_R/NMSU_Soil_Microbial_Analysis/images/bac_alpha_with_letters.png", device = png, plot=final, width=7, height=5)
 ```
 
 
 
 
 # **Beta Diversity**
+
+NOT USED IN FINAL PUBLICATION
 
 - http://evomics.org/wp-content/uploads/2016/01/phyloseq-Lab-01-Answers.html
 - https://www.youtube.com/watch?v=oLf0EpMJ4yA 
